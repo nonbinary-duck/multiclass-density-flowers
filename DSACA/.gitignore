@@ -1,0 +1,8 @@
+**/__pycache__/
+.vscode
+
+
+dataset/VisDrone/
+npydata/
+save_file_model
+vision_map
