@@ -284,6 +284,8 @@ def train(Pre_data, model, criterion, optimizer, epoch, args, scheduler):
 
     for i, (fname, img, target, kpoint, mask_map) in enumerate(train_loader):
 
+        # print(img.shape, target.shape, kpoint.shape, mask_map.shape);
+
         torch.cuda.synchronize()
         end_time_test_4 = time.time()
         run_time_4 = end_time_test_4 - begin_time_test_4
@@ -334,14 +336,16 @@ def train(Pre_data, model, criterion, optimizer, epoch, args, scheduler):
         mask_bus_pre = mask_pre[:, 12:14, :, :]
         mask_motor_pre = mask_pre[:, 14:16, :, :]
 
-        mask_people_map = torch.unsqueeze(mask_map[0, 0, :, :], 0)
-        mask_bicycle_map = torch.unsqueeze(mask_map[0, 1, :, :], 0)
-        mask_car_map = torch.unsqueeze(mask_map[0, 2, :, :], 0)
-        mask_van_map = torch.unsqueeze(mask_map[0, 3, :, :], 0)
-        mask_truck_map = torch.unsqueeze(mask_map[0, 4, :, :], 0)
-        mask_tricycle_map = torch.unsqueeze(mask_map[0, 5, :, :], 0)
-        mask_bus_map = torch.unsqueeze(mask_map[0, 6, :, :], 0)
-        mask_motor_map = torch.unsqueeze(mask_map[0, 7, :, :], 0)
+        mask_people_map = mask_map[:, 0, :, :]
+        mask_bicycle_map = mask_map[:, 1, :, :]
+        mask_car_map = mask_map[:, 2, :, :]
+        mask_van_map = mask_map[:, 3, :, :]
+        mask_truck_map = mask_map[:, 4, :, :]
+        mask_tricycle_map = mask_map[:, 5, :, :]
+        mask_bus_map = mask_map[:, 6, :, :]
+        mask_motor_map = mask_map[:, 7, :, :]
+        # print("squirrel")
+        # print(mask_people_pre.shape, mask_people_map.shape)
         loss = criterion[0](density_map_pre_1, target)+criterion[0](density_map_pre_2, target) \
                + lamda * criterion[1](mask_people_pre,mask_people_map.long()) \
                + lamda * criterion[1](mask_bicycle_pre,mask_bicycle_map.long()) \
