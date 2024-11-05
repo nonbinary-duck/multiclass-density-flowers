@@ -222,10 +222,10 @@ for pth in img_paths:
     spatial_mask[(spatial_mask >= 28 * distance)] = 10
 
     ''' h5 save '''
-    with h5py.File(target_pth.replace('images', 'gt_density_map').replace('.jpg', '.h5'), 'w') as hf:
+    with h5py.File(target_pth.replace('images', 'gt_density_map').replace('.jpg', '.h5'), 'w', ) as hf:
         #hf['kpoint'] = kpoint
-        hf['density_map'] = density_map[[1,2,3,4,5,6,8,9]]
-        hf['mask'] = spatial_mask
+        hf.create_dataset("density_map", compression="gzip", data=density_map[[1,2,3,4,5,6,8,9]]);
+        hf.create_dataset("mask", compression="gzip", data=spatial_mask);
 
     endtime = time.time()
     dtime = endtime - starttime
