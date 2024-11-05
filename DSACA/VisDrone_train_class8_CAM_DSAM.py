@@ -265,7 +265,7 @@ def train(Pre_data, model, criterion, optimizer, epoch, args, scheduler):
         dataset.listDataset_visdrone_class_8(Pre_data, args.task_id,
                             shuffle=True,
                             transform=transforms.Compose([
-                                # transforms.Resize((512, 512)),
+                                transforms.Resize((512, 512)),
                                 transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                                                             std=[0.229, 0.224, 0.225]),
                             ]),
