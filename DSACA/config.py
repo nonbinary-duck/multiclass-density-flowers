@@ -37,7 +37,7 @@ parser.add_argument('--task_id', type=str, default='./save_file_model/VisDrone_c
                     help='save checkpoint directory')
 parser.add_argument('--test_dataset', type=str, default='VisDrone',
                     help='choice train dataset')
-parser.add_argument('--gpu_id', type=str, default='1',
+parser.add_argument('--gpu_id', type=str, default='0',
                     help='gpu id')
 ###################################################################################
 
