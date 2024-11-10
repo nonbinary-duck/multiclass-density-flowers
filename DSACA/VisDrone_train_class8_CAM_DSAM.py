@@ -210,13 +210,6 @@ def main():
         end_val = time.time()
         print("val time",end_val - end_train)
 
-        # Save the metrics for this epoch
-        metrics['val_mae'].append(float(mae));
-        metrics['val_mse'].append(float(mse));
-        met_df = pd.DataFrame(metrics);
-        met_df.to_pickle( os.path.join( "metrics", "metrics.pkl" ));
-        met_df.to_csv( os.path.join( "metrics", "metrics.csv" ) );
-
 
 def crop(d, g):
     g_h, g_w = g.size()[2:4]
@@ -468,6 +461,13 @@ def validate(Pre_data, model, args):
     print('* bus_MAE {bus_mae:.3f}  * bus_MSE {bus_mse:.3f}'.format(bus_mae=mae[6], bus_mse=mse[6]))
     print('* motor_MAE {motor_mae:.3f}  * motor_MSE {motor_mse:.3f}'.format(motor_mae=mae[7], motor_mse=mse[7]))
     print('* MAE {mae:.3f}  * MSE {mse:.3f}'.format(mae=np.mean(mae), mse=np.mean(mse)))
+
+    # Save the metrics for this epoch
+    metrics['val_mae'].append(np.mean(mae));
+    metrics['val_mse'].append(np.mean(mse));
+    met_df = pd.DataFrame(metrics);
+    met_df.to_pickle( os.path.join( "metrics", "metrics.pkl" ));
+    met_df.to_csv( os.path.join( "metrics", "metrics.csv" ) );
 
     return mae, mse, visi
 
