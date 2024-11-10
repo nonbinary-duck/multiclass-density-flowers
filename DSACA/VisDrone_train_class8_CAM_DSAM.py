@@ -15,24 +15,28 @@ from image import *
 
 warnings.filterwarnings('ignore')
 from config import args
-import  os
+import os
 import scipy.misc
 import imageio
 import time
 import random
 import scipy.ndimage
 import cv2
+
+import pandas as pd
+
+
 torch.cuda.manual_seed(args.seed)
 
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu_id
 
+# Store and save metrics as we go
+metrics = { "train_loss": [], "val_mae": [], "val_mse": [] };
 
 print(args)
 
-' small-vehicle, large-vehicle 属于同一类 '
-
 #VisDrone_category = ['pedestrian', 'people', 'bicycle', 'car', 'van', 'truck', 'tricycle', 'awning-tricycle', 'bus', 'motor']
-VisDrone_category = ['people', 'bicycle', 'car', 'van', 'truck', 'tricycle', 'bus', 'motor']
+categories = ['people', 'bicycle', 'car', 'van', 'truck', 'tricycle', 'bus', 'motor']
 
 def feature_test(source_img, mask_gt, gt, mask, feature, save_pth, category):
     imgs = [source_img]
@@ -205,6 +209,13 @@ def main():
         }, visi, is_best, args.task_id)
         end_val = time.time()
         print("val time",end_val - end_train)
+
+        # Save the metrics for this epoch
+        metrics['val_mae'].append(float(mae));
+        metrics['val_mse'].append(float(mse));
+        met_df = pd.DataFrame(metrics);
+        met_df.to_pickle( os.path.join( "metrics", "metrics.pkl" ));
+        met_df.to_csv( os.path.join( "metrics", "metrics.csv" ) );
 
 
 def crop(d, g):
@@ -386,6 +397,8 @@ def train(Pre_data, model, criterion, optimizer, epoch, args, scheduler):
     loss_ave = loss_ave*1.0/len(train_loader)
 
     print(loss_ave, args.lr)
+    metrics['train_loss'].append(float(loss_ave));
+    
     scheduler.step()
 
 def validate(Pre_data, model, args):
@@ -400,8 +413,8 @@ def validate(Pre_data, model, args):
 
     model.eval()
 
-    mae = np.array([1.0]*len(VisDrone_category))
-    mse = np.array([1.0]*len(VisDrone_category))
+    mae = np.array([1.0]*len(categories))
+    mse = np.array([1.0]*len(categories))
     visi = []
 
     for i, (fname, img, target, kpoint, mask_map)  in enumerate(test_loader):
@@ -426,7 +439,7 @@ def validate(Pre_data, model, args):
         mask_pre = torch.unsqueeze(mask_pre, 0)
         density_map_pre = torch.mul(density_map_pre, mask_pre)
 
-        for idx in range(len(VisDrone_category)):
+        for idx in range(len(categories)):
             count = torch.sum(density_map_pre[:,idx,:,:]).item()
             mae[idx] +=abs(torch.sum(target[:,idx,:,:]).item()  - count)
             mse[idx] +=abs(torch.sum(target[:,idx,:,:]).item()  - count) * abs(torch.sum(target[:,idx,:,:]).item()  - count)
@@ -438,10 +451,10 @@ def validate(Pre_data, model, args):
             source_img = cv2.imread('./dataset/VisDrone/test_data_class8/images/{}'.format(fname[0]))
             feature_test(source_img, mask_map.data.cpu().numpy(), target.data.cpu().numpy(), mask_pre.data.cpu().numpy(),
                          density_map_pre.data.cpu().numpy(),
-                         './vision_map/VisDrone_class8/img{}.jpg'.format(str(i)), VisDrone_category)
+                         './vision_map/VisDrone_class8/img{}.jpg'.format(str(i)), categories)
 
     mae = mae*1.0 / len(test_loader)
-    for idx in range(len(VisDrone_category)):
+    for idx in range(len(categories)):
         mse[idx] = math.sqrt(mse[idx] / len(test_loader))
 
     # VisDrone_category = ['people', 'bicycle', 'car', 'van', 'truck', 'tricycle', 'bus', 'motor']
