@@ -6,11 +6,11 @@ parser.add_argument('--workers', type=int, default=4,
                     help='load data workers')
 parser.add_argument('--start_epoch', type=int, default=0,
                     help='start epoch for training')
-parser.add_argument('--batch_size', type=int, default=8,
+parser.add_argument('--batch_size', type=int, default=1,
                     help='input batch size for training')
 parser.add_argument('--lr', type=float, default=1e-5 * 1,
                     help='learning rate')
-parser.add_argument('--epochs', type=int, default=200,
+parser.add_argument('--epochs', type=int, default=20000,
                     help='number of epochs to train')
 parser.add_argument('--seed', type=int, default=1,
                     help='random seed')
@@ -37,7 +37,7 @@ parser.add_argument('--task_id', type=str, default='./save_file_model/VisDrone_c
                     help='save checkpoint directory')
 parser.add_argument('--test_dataset', type=str, default='VisDrone',
                     help='choice train dataset')
-parser.add_argument('--gpu_id', type=str, default='0',
+parser.add_argument('--gpu_id', type=str, default='1',
                     help='gpu id')
 ###################################################################################
 

@@ -104,20 +104,12 @@ class listDataset_visdrone_class_8(Dataset):
         # mask_map = mask_map.copy()
 
         if self.transform is not None:
-            # print(img.shape, target.shape, mask_map.shape)
             img = self.transform(img)
-            # target = self.transform(target)
-            # mask_map = self.transform(mask_map)
-            # target = transforms.Resize((512, 512))(torch.from_numpy(target))
-            # mask_map = transforms.Resize((512, 512))(torch.from_numpy(mask_map))
-            # print("after")
 
         if self.train == True:
             # img = torch.from_numpy(img).cuda()
-            target = transforms.Resize((512, 512))(torch.from_numpy(target)).cuda();
-            mask_map = transforms.Resize((512, 512))(torch.from_numpy(mask_map)).cuda();
-            # target = (target).cuda()
-            # mask_map  = (mask_map).cuda()
+            target = torch.from_numpy(target).cuda()
+            mask_map  = torch.from_numpy(mask_map).cuda()
 
             width = 512
             height = 512
