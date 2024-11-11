@@ -1,5 +1,4 @@
 from __future__ import division
-import warnings
 
 from Network.VisDrone_class8 import VGG
 from utils import save_checkpoint
@@ -9,21 +8,34 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from torchvision import datasets, transforms
-import dataset
+import dsaca_dataset
 import math
-from image import *
+# from image import *
 
-warnings.filterwarnings('ignore')
-from config import args
+from dsaca_config import args
 import os
 import scipy.misc
-import imageio
 import time
 import random
 import scipy.ndimage
 import cv2
 
 import pandas as pd
+import numpy as np
+
+
+## 
+## TODO: Add for-loops where "expanded loops" can be obviously replaced
+## TODO: Add comments
+## TODO: Rename all occurrences referring to "validation" as "testing"
+## TODO: Reduce GT to a single file
+##   - The goal with this is to make it compatible with what I was doing before
+##   - i.e. you have three arrays containing train/val/test input images names, and the GTs are in the same dir as input
+## TODO: Include image size transformer
+## TODO: Add testing file
+## 
+
+
 
 
 torch.cuda.manual_seed(args.seed)
@@ -33,12 +45,22 @@ os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu_id
 # Store and save metrics as we go
 metrics = { "train_loss": [], "val_mae": [], "val_mse": [] };
 
+##
+## Unconfigurable constants
+##
+
+categories = ['people', 'bicycle', 'car', 'van', 'truck', 'tricycle', 'bus', 'motor'];
+
+
+
 print(args)
 
-#VisDrone_category = ['pedestrian', 'people', 'bicycle', 'car', 'van', 'truck', 'tricycle', 'awning-tricycle', 'bus', 'motor']
-categories = ['people', 'bicycle', 'car', 'van', 'truck', 'tricycle', 'bus', 'motor']
+
 
 def feature_test(source_img, mask_gt, gt, mask, feature, save_pth, category):
+    """
+    TODO: What does this do?
+    """
     imgs = [source_img]
     for i in range(feature.shape[1]):
         np.seterr(divide='ignore', invalid='ignore')
@@ -72,14 +94,21 @@ def feature_test(source_img, mask_gt, gt, mask, feature, save_pth, category):
     cv2.imwrite(save_pth, img)
 
 def setup_seed(seed):
+    """
+    TODO: What does this do?
+    """
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     np.random.seed(seed)
     random.seed(seed)
 
 def main():
+    """
+    TODO: What does this do?
+    """
     setup_seed(0)
 
+    # List of validation and train files
     train_file = './npydata/VisDrone_train.npy'
     val_file = './npydata/VisDrone_test.npy'
 
@@ -88,9 +117,8 @@ def main():
     with open(val_file, 'rb') as outfile:
         val_list = np.load(outfile).tolist()
 
+    # Initialise the model
     model = VGG()
-
-
     model = nn.DataParallel(model, device_ids=[0])
     model = model.cuda()
 
@@ -201,6 +229,9 @@ def main():
 
 
 def crop(d, g):
+    """
+    TODO: What does this do?
+    """
     g_h, g_w = g.size()[2:4]
     d_h, d_w = d.size()[2:4]
 
@@ -210,6 +241,9 @@ def crop(d, g):
 
 
 def choose_crop(output, target):
+    """
+    TODO: What does this do?
+    """
     if (output.size()[2] > target.size()[2]) | (output.size()[3] > target.size()[3]):
         output = crop(output, target)
     if (output.size()[2] > target.size()[2]) | (output.size()[3] > target.size()[3]):
@@ -223,6 +257,9 @@ def choose_crop(output, target):
 
 
 def gt_transform(pt2d, rate):
+    """
+    TODO: What does this do?
+    """
     # print(pt2d.shape,rate)
     pt2d = pt2d.data.cpu().numpy()
 
@@ -250,6 +287,9 @@ def gt_transform(pt2d, rate):
     return density
 
 def train(Pre_data, model, criterion, optimizer, epoch, args, scheduler):
+    """
+    TODO: What does this do?
+    """
     losses = AverageMeter()
     batch_time = AverageMeter()
     data_time = AverageMeter()
@@ -384,6 +424,9 @@ def train(Pre_data, model, criterion, optimizer, epoch, args, scheduler):
     scheduler.step()
 
 def validate(Pre_data, model, args):
+    """
+    TODO: What does this do?
+    """
     print ('begin test')
     test_loader = torch.utils.data.DataLoader(
         dataset.listDataset_visdrone_class_8(Pre_data, args.task_id,
