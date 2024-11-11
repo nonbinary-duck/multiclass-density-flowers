@@ -39,9 +39,9 @@ class CANNet(nn.Module):
         self.backend_feat  = [512, 512, 512,256,128,64]
         self.frontend = make_layers(self.frontend_feat)
         self.backend = make_layers(self.backend_feat,in_channels = 512,batch_norm=True, dilation = True)
-        # self.output_layer = nn.Conv2d(64, 25, kernel_size=1)
+        self.output_layer = nn.Conv2d(64, 1, kernel_size=1)
         # Make sure sigmoid is channel-wise 0-1 not whole tensor 0-1 (disregard)
-        self.output_layer = nn.Sequential(nn.Conv2d(64, 25, kernel_size=1), nn.Sigmoid())
+        # self.output_layer = nn.Sequential(nn.Conv2d(64, 25, kernel_size=1), nn.Sigmoid())
         
         if not load_weights:
             # mod = models.vgg16(pretrained = True)

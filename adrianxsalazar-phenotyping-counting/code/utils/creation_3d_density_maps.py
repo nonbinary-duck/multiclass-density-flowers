@@ -108,7 +108,7 @@ class create_density_dataset():
                 for c in range(self.class_count):
                     # Make an image with a single 1.0 value pixel per bbox centroid
                     minik = np.zeros((math.floor(img.shape[0] / self.downsize_ratio), math.floor(img.shape[1] / self.downsize_ratio)));
-                    gt=np.loadtxt(img_path + (f"_c{c}.txt" if (self.class_count != 1) else ".txt"));
+                    gt=np.loadtxt(img_path + (f"_c{c}.txt" if (self.class_count != 1 or True) else ".txt"));
 
                     for i in range(0,len(gt)):
                         if int(gt[i][1])<img.shape[0] and int(gt[i][0])<img.shape[1]:

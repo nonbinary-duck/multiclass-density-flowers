@@ -212,20 +212,21 @@ def train(train_list, model, criterion, optimizer, epoch):
 
         img = img.cuda()
         img = Variable(img)
-        output = model(img)#[:,:,:,:]
+        output = model(img).squeeze()#[:,:,:,:]
 
         # Desired is bcxy, we have bxyc
-        target = torch.transpose(target, 1, 3);
-        # Now we have bcyx, so swap x with y
-        target = torch.transpose(target, 2, 3);
+        # print(target.shape)
+        # target = torch.transpose(target, 1, 3);
+        # # Now we have bcyx, so swap x with y
+        # target = torch.transpose(target, 2, 3);
         target = target.type(torch.FloatTensor).cuda()
         target = Variable(target)
 
         # print(f"OUTPUT SHAPE {output.shape}")
         # print(f"TARGET SHAPE {target.shape}")
-        loss =  criterion(output[:, 0, :, :], target[:, 0, :, :])#[:, :, :])
-        loss += criterion(output[:, 1, :, :], target[:, 1, :, :])#[:, :, :])
-        loss += criterion(output[:, 2, :, :], target[:, 2, :, :])#[:, :, :])
+        loss =  criterion(output, target)#[:, :, :])
+        # loss += criterion(output[:, 1, :], target[:, 1, :])#[:, :, :])
+        # loss += criterion(output[:, 2, :], target[:, 2, :])#[:, :, :])
 
         losses.update(loss.item(), img.size(0))
         optimizer.zero_grad()
