@@ -12,19 +12,23 @@ from PIL import Image, ImageDraw, ImageFont
 from shutil import copyfile
 from scipy.ndimage.filters import gaussian_filter
 
-root = '../dataset/VisDrone'
+# Rel path to the dataset
+ds_path = '../dataset/hicks'
 
-test_label_pth = os.path.join(root, 'VisDrone2019-DET-val/annotations')
-test_img_pth = os.path.join(root, 'VisDrone2019-DET-val/images')
-train_label_pth = os.path.join(root, 'VisDrone2019-DET-train/annotations')
-train_img_pth = os.path.join(root, 'VisDrone2019-DET-train/images')
+# Path to store the labels and images for validation
+val_label_pth = os.path.join(ds_path, 'val/annotations')
+val_img_pth = os.path.join(ds_path, 'val/images')
+# Path to store the labels and images for training
+train_label_pth = os.path.join(ds_path, 'train/annotations')
+train_img_pth = os.path.join(ds_path, 'train/images')
 
-test_data_images_pth = os.path.join(root, 'test_data_class8', 'images')
-test_data_map_pth = os.path.join(root, 'test_data_class8', 'gt_density_map')
-test_data_show_pth = os.path.join(root, 'test_data_class8', 'gt_show')
-train_data_images_pth = os.path.join(root, 'train_data_class8', 'images')
-train_data_map_pth = os.path.join(root, 'train_data_class8', 'gt_density_map')
-train_data_show_pth = os.path.join(root, 'train_data_class8', 'gt_show')
+
+test_data_images_pth = os.path.join(ds_path, 'test_data_class8', 'images')
+test_data_map_pth = os.path.join(ds_path, 'test_data_class8', 'gt_density_map')
+test_data_show_pth = os.path.join(ds_path, 'test_data_class8', 'gt_show')
+train_data_images_pth = os.path.join(ds_path, 'train_data_class8', 'images')
+train_data_map_pth = os.path.join(ds_path, 'train_data_class8', 'gt_density_map')
+train_data_show_pth = os.path.join(ds_path, 'train_data_class8', 'gt_show')
 
 if not os.path.exists(test_data_images_pth):
     os.makedirs(test_data_images_pth)
@@ -105,7 +109,7 @@ color_buf = [(0, 0, 255), (0, 255, 0), (255, 0, 0),
              (0, 255, 255), (255, 0, 255), (255, 255, 0),]
 
 
-path_sets = [test_label_pth, train_label_pth]
+path_sets = [val_label_pth, train_label_pth]
 img_paths=[]
 for path in path_sets:
     img_paths+=search(path, '.txt')
