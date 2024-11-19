@@ -12,6 +12,8 @@ from PIL import Image, ImageDraw, ImageFont
 from shutil import copyfile
 from scipy.ndimage.filters import gaussian_filter
 
+import matplotlib.pyplot as plt
+
 root = '../dataset/hicks_vdlike'
 
 test_label_pth = os.path.join(root, 'val/annotations')
@@ -136,30 +138,35 @@ for pth in img_paths:
     '''有效类别只有 Valid categories are only len(VisDrone_category_buf)-2  类 resemble'''
     kpoint = np.zeros((len(hicks_category_buf) - 1, img.shape[0], img.shape[1])).astype(np.uint8)
     for item in bbox:
-        #print(VisDrone_category_buf[int(item[5])])
-        if (str(hicks_category_buf[int(item[5])]).find('people')>=0) | (str(hicks_category_buf[int(item[5])]).find('pedestrian')>=0)  :
-            # center_x = int(item[1]) + int(item[3])/2.0
-            # center_y = int(item[0]) + int(item[2])/10.0
-            center_x = int(item[1]) + int(item[3])/10.0
-            center_y = int(item[0]) + int(item[2])/2.0
-            new_x, new_y = resize((source_shape, center_x, center_y), 1024, 'coordinate')
-            #print(source_shape, math.floor(new_x), math.floor(new_y))
-            kpoint[int(item[5]) -1, math.floor(new_x), math.floor(new_y)] = 1
-        elif (str(hicks_category_buf[int(item[5])]).find('ignored-regions')==-1) & (str(hicks_category_buf[int(item[5])]).find('others')==-1):
-            center_x = int(item[1]) + int(item[3])/2.0
-            center_y = int(item[0]) + int(item[2])/2.0
-            new_x, new_y = resize((source_shape, center_x, center_y), 1024, 'coordinate')
-            #print(source_shape, math.floor(new_x), math.floor(new_y))
-            kpoint[int(item[5]) -1, math.floor(new_x), math.floor(new_y)] = 1
-        elif str(hicks_category_buf[int(item[5])]).find('ignored-regions') >= 0:
-            top = int(item[0])
-            left = int(item[1])
-            bottom = int(item[0]) + int(item[2])
-            right = int(item[1]) + int(item[3])
-            left, bottom = resize((source_shape, bottom, left), 1024, 'coordinate')
-            right, top = resize((source_shape, top, right), 1024, 'coordinate')
-            points.append([ [left,top], [left,bottom], [right,bottom], [right,top] ])
-            #print([left,top], [left,bottom], [right,bottom], [right,top])
+        # #print(VisDrone_category_buf[int(item[5])])
+        # if (str(hicks_category_buf[int(item[5])]).find('people')>=0) | (str(hicks_category_buf[int(item[5])]).find('pedestrian')>=0)  :
+        #     # center_x = int(item[1]) + int(item[3])/2.0
+        #     # center_y = int(item[0]) + int(item[2])/10.0
+        #     center_x = int(item[1]) + int(item[3])/10.0
+        #     center_y = int(item[0]) + int(item[2])/2.0
+        #     new_x, new_y = resize((source_shape, center_x, center_y), 1024, 'coordinate')
+        #     #print(source_shape, math.floor(new_x), math.floor(new_y))
+        #     kpoint[int(item[5]) -1, math.floor(new_x), math.floor(new_y)] = 1
+        # elif (str(hicks_category_buf[int(item[5])]).find('ignored-regions')==-1) & (str(hicks_category_buf[int(item[5])]).find('others')==-1):
+
+        center_x = int(item[1]) + int(item[3])/2.0
+        center_y = int(item[0]) + int(item[2])/2.0
+        new_x, new_y = resize((source_shape, center_x, center_y), 1024, 'coordinate')
+        new_x = min(new_x, kpoint.shape[1] - 1);
+        new_y = min(new_y, kpoint.shape[2] - 1);
+        #print(source_shape, math.floor(new_x), math.floor(new_y))
+        # print(item[5]);
+        kpoint[int(item[5])-1, math.floor(new_x), math.floor(new_y)] = 1
+
+        # elif str(hicks_category_buf[int(item[5])]).find('ignored-regions') >= 0:
+        #     top = int(item[0])
+        #     left = int(item[1])
+        #     bottom = int(item[0]) + int(item[2])
+        #     right = int(item[1]) + int(item[3])
+        #     left, bottom = resize((source_shape, bottom, left), 1024, 'coordinate')
+        #     right, top = resize((source_shape, top, right), 1024, 'coordinate')
+        #     points.append([ [left,top], [left,bottom], [right,bottom], [right,top] ])
+        #     #print([left,top], [left,bottom], [right,bottom], [right,top])
 
     ''' density_map '''
     density_map = kpoint.copy().astype(np.float32)
@@ -186,6 +193,12 @@ for pth in img_paths:
     cv2.imwrite(target_pth, img*mask[:,:,None])
     feature_test(density_map, target_pth.replace('images', 'gt_show').replace('.jpg', ''), hicks_category_buf)
     cv2.imwrite(os.path.join(target_pth.replace('images', 'gt_show').replace('.jpg', ''), os.path.basename(target_pth)) , np.multiply(img, mask[:,:,None]))
+
+    # plt.figure(figsize=(16,9), dpi=300);
+    # plt.imshow(img*mask[:,:,None]);
+    # plt.savefig(target_pth, bbox_inches='tight', pad_inches = 0.5, dpi=300);
+
+    
 
     '''
     “无视区域”，“行人”，“人”，“自行车”，“汽车”，“货车”，“卡车”，“三轮车”，“遮阳篷三轮车”，“公共汽车”，“摩托”，“其他” '
