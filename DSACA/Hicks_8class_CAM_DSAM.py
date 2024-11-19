@@ -37,7 +37,7 @@ print(args)
 
 #VisDrone_category = ['pedestrian', 'people', 'bicycle', 'car', 'van', 'truck', 'tricycle', 'awning-tricycle', 'bus', 'motor']
 # categories = ['people', 'bicycle', 'car', 'van', 'truck', 'tricycle', 'bus', 'motor']
-categories = ['leucanthemum_vulgare', 'raununculus_spp', 'heracleum_sphondylium', 'silene_dioica-latifolia', 'trifolium_repens', 'cirsium_arvense', 'stachys_sylvatica', 'rubus_fruticosus_agg', 'vicia_cracca'];
+categories = ['leucanthemum_vulgare', 'raununculus_spp', 'heracleum_sphondylium', 'silene_dioica-latifolia', 'trifolium_repens', 'cirsium_arvense', 'stachys_sylvatica', 'rubus_fruticosus_agg'];
 
 def feature_test(source_img, mask_gt, gt, mask, feature, save_pth, category):
     imgs = [source_img]
@@ -66,11 +66,14 @@ def feature_test(source_img, mask_gt, gt, mask, feature, save_pth, category):
         save_data = cv2.applyColorMap(save_data, 2)
         # save_data = cv2.putText(save_data, category[i], (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 2)
         imgs.append(save_data)
-    img = np.hstack(imgs)
+    
+    for i, img in enumerate(imgs):
+        cv2.imwrite(f"{save_pth}_{i}.jpg", img);
+    # img = np.hstack(imgs)
     # for idx, image in enumerate(imgs):
     #     pth = os.path.join(os.path.dirname(save_pth), '{}.jpg'.format(idx))
     #     cv2.imwrite(pth, image)
-    cv2.imwrite(save_pth, img)
+    # cv2.imwrite(save_pth, img)
 
 def setup_seed(seed):
     torch.manual_seed(seed)
@@ -414,10 +417,10 @@ def validate(Pre_data, model, args):
 
         if i%50 == 0:
             print(i)
-            source_img = cv2.imread('./dataset/VisDrone/test_data_class8/images/{}'.format(fname[0]))
+            source_img = cv2.imread('./dataset/hicks_vdlike/test_data_class8/images/{}'.format(fname[0]))
             feature_test(source_img, mask_map.data.cpu().numpy(), target.data.cpu().numpy(), mask_pre.data.cpu().numpy(),
                          density_map_pre.data.cpu().numpy(),
-                         './vision_map/VisDrone_class8/img{}.jpg'.format(str(i)), categories)
+                         './vision_map/hicks_class8/img{}.jpg'.format(str(i)), categories)
 
     mae = mae*1.0 / len(test_loader)
     for idx in range(len(categories)):
@@ -425,15 +428,17 @@ def validate(Pre_data, model, args):
 
     # VisDrone_category = ['people', 'bicycle', 'car', 'van', 'truck', 'tricycle', 'bus', 'motor']
     print('\n* VisDrone_class8', '\targs.gpu_id:',args.gpu_id )
-    print('* people_MAE {people_mae:.3f}  * people_MSE {people_mse:.3f}'.format(people_mae=mae[0], people_mse=mse[0]))
-    print('* bicycle_MAE {bicycle_mae:.3f}  * bicycle_MSE {bicycle_mse:.3f}'.format(bicycle_mae=mae[1], bicycle_mse=mse[1]))
-    print('* car_MAE {car_mae:.3f}  * car_MSE {car_mse:.3f}'.format(car_mae=mae[2], car_mse=mse[2]))
-    print('* van_MAE {van_mae:.3f}  * van_MSE {van_mse:.3f}'.format(van_mae=mae[3], van_mse=mse[3]))
-    print('* truck_MAE {truck_mae:.3f}  * truck_MSE {truck_mse:.3f}'.format(truck_mae=mae[4], truck_mse=mse[4]))
-    print('* tricycle_MAE {tricycle_mae:.3f}  * tricycle_MSE {tricycle_mse:.3f}'.format(tricycle_mae=mae[5], tricycle_mse=mse[5]))
-    print('* bus_MAE {bus_mae:.3f}  * bus_MSE {bus_mse:.3f}'.format(bus_mae=mae[6], bus_mse=mse[6]))
-    print('* motor_MAE {motor_mae:.3f}  * motor_MSE {motor_mse:.3f}'.format(motor_mae=mae[7], motor_mse=mse[7]))
-    print('* MAE {mae:.3f}  * MSE {mse:.3f}'.format(mae=np.mean(mae), mse=np.mean(mse)))
+    for i, cat in enumerate(categories):
+        print(f"* {cat}_MAE {mae[i]:.3f} \t best {cat}_MSE {mse[i]:3f}");
+    # print('* people_MAE {people_mae:.3f}  * people_MSE {people_mse:.3f}'.format(people_mae=mae[0], people_mse=mse[0]))
+    # print('* bicycle_MAE {bicycle_mae:.3f}  * bicycle_MSE {bicycle_mse:.3f}'.format(bicycle_mae=mae[1], bicycle_mse=mse[1]))
+    # print('* car_MAE {car_mae:.3f}  * car_MSE {car_mse:.3f}'.format(car_mae=mae[2], car_mse=mse[2]))
+    # print('* van_MAE {van_mae:.3f}  * van_MSE {van_mse:.3f}'.format(van_mae=mae[3], van_mse=mse[3]))
+    # print('* truck_MAE {truck_mae:.3f}  * truck_MSE {truck_mse:.3f}'.format(truck_mae=mae[4], truck_mse=mse[4]))
+    # print('* tricycle_MAE {tricycle_mae:.3f}  * tricycle_MSE {tricycle_mse:.3f}'.format(tricycle_mae=mae[5], tricycle_mse=mse[5]))
+    # print('* bus_MAE {bus_mae:.3f}  * bus_MSE {bus_mse:.3f}'.format(bus_mae=mae[6], bus_mse=mse[6]))
+    # print('* motor_MAE {motor_mae:.3f}  * motor_MSE {motor_mse:.3f}'.format(motor_mae=mae[7], motor_mse=mse[7]))
+    print('* MAE {mae:.3f}  * MSE {mse:.3f}'.format(mae=np.mean(mae), mse=np.mean(mse)));
 
     # Save the metrics for this epoch
     metrics['val_mae'].append(np.mean(mae));
