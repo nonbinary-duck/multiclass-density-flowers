@@ -81,8 +81,8 @@ def setup_seed(seed):
 def main():
     setup_seed(0)
 
-    train_file = './npydata/VisDrone_train.npy'
-    val_file = './npydata/VisDrone_test.npy'
+    train_file = './npydata/hicks_train.npy'
+    val_file = './npydata/hicks_test.npy'
 
     with open(train_file, 'rb') as outfile:
         train_list = np.load(outfile).tolist()
@@ -132,25 +132,9 @@ def main():
     if not os.path.exists(args.task_id):
         os.makedirs(args.task_id)
 
-    best_mse = 1e5
-
-    best_people_mae = 1e5
-    best_bicycle_mae = 1e5
-    best_car_mae = 1e5
-    best_van_mae = 1e5
-    best_truck_mae = 1e5
-    best_tricycle_mae = 1e5
-    best_bus_mae = 1e5
-    best_motor_mae = 1e5
-
-    best_people_mse = 1e5
-    best_bicycle_mse = 1e5
-    best_car_mse = 1e5
-    best_van_mse = 1e5
-    best_truck_mse = 1e5
-    best_tricycle_mse = 1e5
-    best_bus_mse = 1e5
-    best_motor_mse = 1e5
+    best_mse  = 1e5
+    best_maes = [1e5 for c in categories];
+    best_mses = [1e5 for c in categories];
 
     for epoch in range(args.start_epoch, args.epochs):
         start = time.time()
@@ -171,34 +155,22 @@ def main():
         args.best_pred = min(prec1, args.best_pred)
         if is_best:
             best_mse = np.mean(mse)
-            best_people_mae = mae[0]
-            best_bicycle_mae = mae[1]
-            best_car_mae = mae[2]
-            best_van_mae = mae[3]
-            best_truck_mae = mae[4]
-            best_tricycle_mae = mae[5]
-            best_bus_mae = mae[6]
-            best_motor_mae = mae[7]
-
-            best_people_mse = mse[0]
-            best_bicycle_mse = mse[1]
-            best_car_mse = mse[2]
-            best_van_mse = mse[3]
-            best_truck_mse = mse[4]
-            best_tricycle_mse = mse[5]
-            best_bus_mse = mse[6]
-            best_motor_mse = mse[7]
-
-
+            best_maes = mae.copy();
+            best_mses = mse.copy();
+            
         print('*\tbest MAE {mae:.3f} \tbest MSE {mse:.3f}'.format(mae=args.best_pred, mse=best_mse))
-        print('*\tbest people_MAE {people_mae:.3f} \tbest people_MSE {people_mse:.3f}'.format(people_mae=best_people_mae,people_mse=best_people_mse))
-        print('*\tbest bicycle_MAE {bicycle_mae:.3f} \tbest bicycle_MSE {bicycle_mse:.3f}'.format(bicycle_mae=best_bicycle_mae,bicycle_mse=best_bicycle_mse))
-        print('*\tbest car_MAE {car_mae:.3f} \tbest car_MSE {car_mse:.3f}'.format(car_mae=best_car_mae,car_mse=best_car_mse))
-        print('*\tbest van_MAE {van_mae:.3f} \tbest van_MSE {van_mse:.3f}'.format(van_mae=best_van_mae,van_mse=best_van_mse))
-        print('*\tbest truck_MAE {truck_mae:.3f} \tbest truck_MSE {truck_mse:.3f}'.format(truck_mae=best_truck_mae,truck_mse=best_truck_mse))
-        print('*\tbest tricycle_MAE {tricycle_mae:.3f} \tbest tricycle_MSE {tricycle_mse:.3f}'.format(tricycle_mae=best_tricycle_mae,tricycle_mse=best_tricycle_mse))
-        print('*\tbest bus_MAE {bus_mae:.3f} \tbest bus_MSE {bus_mse:.3f}'.format(bus_mae=best_bus_mae,bus_mse=best_bus_mse))
-        print('*\tbest motor_MAE {motor_mae:.3f} \tbest motor_MSE {motor_mse:.3f}'.format(motor_mae=best_motor_mae,motor_mse=best_motor_mse))
+
+        for i, cat in enumerate(categories):
+            print(f"*\t best {cat}_MAE {best_maes[i]:.3f} \t best {cat}_MSE {best_mses[i]:3f}");
+        
+        # print('*\tbest people_MAE {people_mae:.3f} \tbest people_MSE {people_mse:.3f}'.format(people_mae=best_people_mae,people_mse=best_people_mse))
+        # print('*\tbest bicycle_MAE {bicycle_mae:.3f} \tbest bicycle_MSE {bicycle_mse:.3f}'.format(bicycle_mae=best_bicycle_mae,bicycle_mse=best_bicycle_mse))
+        # print('*\tbest car_MAE {car_mae:.3f} \tbest car_MSE {car_mse:.3f}'.format(car_mae=best_car_mae,car_mse=best_car_mse))
+        # print('*\tbest van_MAE {van_mae:.3f} \tbest van_MSE {van_mse:.3f}'.format(van_mae=best_van_mae,van_mse=best_van_mse))
+        # print('*\tbest truck_MAE {truck_mae:.3f} \tbest truck_MSE {truck_mse:.3f}'.format(truck_mae=best_truck_mae,truck_mse=best_truck_mse))
+        # print('*\tbest tricycle_MAE {tricycle_mae:.3f} \tbest tricycle_MSE {tricycle_mse:.3f}'.format(tricycle_mae=best_tricycle_mae,tricycle_mse=best_tricycle_mse))
+        # print('*\tbest bus_MAE {bus_mae:.3f} \tbest bus_MSE {bus_mse:.3f}'.format(bus_mae=best_bus_mae,bus_mse=best_bus_mse))
+        # print('*\tbest motor_MAE {motor_mae:.3f} \tbest motor_MSE {motor_mse:.3f}'.format(motor_mae=best_motor_mae,motor_mse=best_motor_mse))
 
 
         save_checkpoint({
