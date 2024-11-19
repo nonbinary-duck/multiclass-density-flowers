@@ -123,9 +123,9 @@ for pth in img_paths:
     starttime = time.time()
 
     if str(pth).find('train') > 0:
-        target_pth = pth.replace('VisDrone2019-DET-train/annotations','train_data_class8/images').replace('.txt','.jpg')
+        target_pth = pth.replace('train/annotations','train_data_class8/images').replace('.txt','.jpg')
     if str(pth).find('val') > 0:
-        target_pth = pth.replace('VisDrone2019-DET-val/annotations','test_data_class8/images').replace('.txt','.jpg')
+        target_pth = pth.replace('val/annotations','test_data_class8/images').replace('.txt','.jpg')
 
     bbox = load_gt_bbox(pth)
     img = cv2.imread(pth.replace('annotations', 'images').replace('txt', 'jpg'))
