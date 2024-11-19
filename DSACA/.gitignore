@@ -3,6 +3,7 @@
 
 **/*.log
 
+dataset/
 dataset/VisDrone/
 npydata/
 save_file_model

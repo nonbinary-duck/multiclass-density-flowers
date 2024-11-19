@@ -12,7 +12,7 @@ from PIL import Image, ImageDraw, ImageFont
 from shutil import copyfile
 from scipy.ndimage.filters import gaussian_filter
 
-root = '../dataset/VisDrone'
+root = '../dataset/hicks_vdlike'
 
 test_label_pth = os.path.join(root, 'val/annotations')
 test_img_pth = os.path.join(root, 'val/images')
@@ -99,7 +99,7 @@ def feature_test(feature, save_pth, category):
 #“无视区域”，“行人”，“人”，“自行车”，“汽车”，“货车”，“卡车”，“三轮车”，“遮阳篷三轮车”，“公共汽车”，“摩托”，“其他” '
 # VisDrone_category_buf = [ 'ignored-regions', 'pedestrian', 'people', 'bicycle', 'car', 'van', 'truck', 'tricycle', 'awning-tricycle', 'bus', 'motor', 'others']
 hicks_category_buf = ['leucanthemum_vulgare', 'raununculus_spp', 'heracleum_sphondylium', 'silene_dioica-latifolia', 'trifolium_repens', 'cirsium_arvense', 'stachys_sylvatica', 'rubus_fruticosus_agg', 'vicia_cracca']
-kernel_size_buf = [4, 4, 4, 8, 8, 8, 6, 6, 8, 8]
+kernel_size_buf = [4, 8, 8, 8, 6, 6, 8, 8]
 color_buf = [(0, 0, 255), (0, 255, 0), (255, 0, 0),
              (0, 125, 125), (125, 0, 125), (125, 125, 0),
              (0, 25, 25), (25, 0, 25), (25, 25, 0),
@@ -131,10 +131,10 @@ for pth in img_paths:
     img = resize(img, 1024, 'img')
 
     ''' mask_map_points '''
-    points = [] # 多边形的顶点坐标
+    points = [] # 多边形的顶点坐标 # Coordinates of the vertices of a polygon
 
-    '''有效类别只有  len(VisDrone_category_buf)-2  类'''
-    kpoint = np.zeros((len(hicks_category_buf)-2, img.shape[0], img.shape[1])).astype(np.int8)
+    '''有效类别只有 Valid categories are only len(VisDrone_category_buf)-2  类 resemble'''
+    kpoint = np.zeros((len(hicks_category_buf) - 1, img.shape[0], img.shape[1])).astype(np.uint8)
     for item in bbox:
         #print(VisDrone_category_buf[int(item[5])])
         if (str(hicks_category_buf[int(item[5])]).find('people')>=0) | (str(hicks_category_buf[int(item[5])]).find('pedestrian')>=0)  :
@@ -163,10 +163,12 @@ for pth in img_paths:
 
     ''' density_map '''
     density_map = kpoint.copy().astype(np.float32)
-    density_map[1,:,:]=density_map[0,:,:]+density_map[1,:,:]#将行人和人都记作人
-    kpoint[1,:,:]=kpoint[0,:,:]+kpoint[1,:,:]#将行人和人都记作人
-    density_map[6, :, :] = density_map[6, :, :] + density_map[7, :, :] #将“三轮车，敞篷三轮车”都记作三轮车
-    kpoint[6, :, :] = kpoint[6, :, :] + kpoint[7, :, :] #将“三轮车，敞篷三轮车”都记作三轮车
+    # density_map[1,:,:]=density_map[0,:,:]+density_map[1,:,:]#将行人和人都记作人 # Marking pedestrians and people as human beings
+    # kpoint[1,:,:]=kpoint[0,:,:]+kpoint[1,:,:]#将行人和人都记作人
+    # density_map[6, :, :] = density_map[6, :, :] + density_map[7, :, :] #将“三轮车，敞篷三轮车”都记作三轮车 # ‘Tricycles, open tricycles’ as tricycles.
+    # kpoint[6, :, :] = kpoint[6, :, :] + kpoint[7, :, :] #将“三轮车，敞篷三轮车”都记作三轮车
+
+    # print (density_map.shape)
 
     density_map = kpoint.copy().astype(np.float32)
     for idx in range(len(kernel_size_buf)):
@@ -190,21 +192,23 @@ for pth in img_paths:
     VisDrone_category_buf = [ 'ignored-regions', 'pedestrian', 'people', 'bicycle', 'car', 'van', 'truck', 'tricycle', 'awning-tricycle', 'bus', 'motor', 'others']
     '''
 
-    distance_map = (255*(1-kpoint[1,:,:].copy())).astype(np.uint8)
+    # print(np.min(kpoint[0,:,:]), np.max(kpoint[0,:,:]), np.mean(kpoint[0,:,:]), np.sum(kpoint[0,:,:]))
+
+    distance_map = (255 * (1-kpoint[0,:,:].copy())).astype(np.uint8)
     person=cv2.distanceTransform(distance_map, cv2.DIST_L2, 5)
-    distance_map = (255 * (1 - kpoint[2, :, :].copy())).astype(np.uint8)
+    distance_map = (255 * (1 - kpoint[1, :, :].copy())).astype(np.uint8)
     bicycle=cv2.distanceTransform(distance_map, cv2.DIST_L2, 5)
-    distance_map = (255 * (1 - kpoint[3, :, :].copy())).astype(np.uint8)
+    distance_map = (255 * (1 - kpoint[2, :, :].copy())).astype(np.uint8)
     car=cv2.distanceTransform(distance_map, cv2.DIST_L2, 5)
-    distance_map = (255 * (1 - kpoint[4, :, :].copy())).astype(np.uint8)
+    distance_map = (255 * (1 - kpoint[3, :, :].copy())).astype(np.uint8)
     van=cv2.distanceTransform(distance_map, cv2.DIST_L2, 5)
-    distance_map = (255 * (1 - kpoint[5, :, :].copy())).astype(np.uint8)
+    distance_map = (255 * (1 - kpoint[4, :, :].copy())).astype(np.uint8)
     truck=cv2.distanceTransform(distance_map, cv2.DIST_L2, 5)
-    distance_map = (255 * (1 - kpoint[6, :, :].copy())).astype(np.uint8)
+    distance_map = (255 * (1 - kpoint[5, :, :].copy())).astype(np.uint8)
     tricycle=cv2.distanceTransform(distance_map, cv2.DIST_L2, 5)
-    distance_map = (255 * (1 - kpoint[8, :, :].copy())).astype(np.uint8)
+    distance_map = (255 * (1 - kpoint[6, :, :].copy())).astype(np.uint8)
     bus=cv2.distanceTransform(distance_map, cv2.DIST_L2, 5)
-    distance_map = (255 * (1 - kpoint[9, :, :].copy())).astype(np.uint8)
+    distance_map = (255 * (1 - kpoint[7, :, :].copy())).astype(np.uint8)
     motor=cv2.distanceTransform(distance_map, cv2.DIST_L2, 5)
 
     spatial_mask = np.array([person, bicycle, car, van, truck, tricycle, bus, motor])
@@ -225,7 +229,7 @@ for pth in img_paths:
     ''' h5 save '''
     with h5py.File(target_pth.replace('images', 'gt_density_map').replace('.jpg', '.h5'), 'w', ) as hf:
         #hf['kpoint'] = kpoint
-        hf.create_dataset("density_map", compression="gzip", data=density_map[[1,2,3,4,5,6,8,9]]);
+        hf.create_dataset("density_map", compression="gzip", data=density_map);
         hf.create_dataset("mask", compression="gzip", data=spatial_mask);
 
     endtime = time.time()
