@@ -12,3 +12,5 @@ imageio==2.36.0
 pandas==2.2.3
 
 h5py==3.12.1
+
+seaborn==0.13.2

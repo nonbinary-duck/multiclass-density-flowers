@@ -20,21 +20,28 @@ def plot_metrics():
 
     sns.set_theme();
     plt.figure(figsize=(16,9), dpi=72);
-    ax = plt.subplot(2,2,1);
-    ax.set_title("Validation trend after 9th epoch")
-    sns.regplot(data=met_df.where(met_df.epoch >= 10), x="epoch", y="val_mae", marker="x", ax=ax);
+    # ax = plt.subplot(2,2,1);
+    # ax.set_title("Validation trend after 9th epoch")
+    # sns.regplot(data=met_df.where(met_df.epoch >= 10), x="epoch", y="val_mae", marker="x", ax=ax);
 
-    ax = plt.subplot(2,2,2);
-    ax.set_title("Loss function trend after 9th epoch")
-    sns.regplot(data=met_df.where(met_df.epoch >= 10), x="epoch", y="train_loss", marker="x", ax=ax);
+    # ax = plt.subplot(2,2,2);
+    # ax.set_title("Loss function trend after 9th epoch")
+    # sns.regplot(data=met_df.where(met_df.epoch >= 10), x="epoch", y="train_loss", marker="x", ax=ax);
 
-    ax = plt.subplot(2,2,3);
+    ax = plt.subplot(1,1,1);
     ax.set_title("Performance after 9th epoch")
-    sns.lineplot(data=met_mdf.where(met_mdf.epoch >= 10), x="epoch", y="value", hue="metric", palette="flare", ax=ax);
+    line_val  = ax.plot("epoch", "val_mae", label="val_mae", data=met_df.where(met_df.epoch >= 10), color="darkolivegreen");
+    # sns.lineplot(data=met_df.where(met_df.epoch >= 10), x="epoch", y="train_loss", ax=ax.twinx());
+    axt = ax.twinx();
+    line_loss = axt.plot("epoch", "train_loss", label="loss_mse", data=met_df.where(met_df.epoch >= 10), color="salmon");
+    lns  = line_val + line_loss;
+    labs = [l.get_label() for l in lns];
+    ax.legend(lns, labs);
+    # axt.legend();
 
-    ax = plt.subplot(2,2,4);
-    ax.set_title("Performance before 10th epoch")
-    sns.lineplot(data=met_mdf.where(met_mdf.epoch < 10), x="epoch", y="value", hue="metric", palette="flare", ax=ax);
+    # ax = plt.subplot(1,2,2);
+    # ax.set_title("Performance before 10th epoch")
+    # sns.lineplot(data=met_mdf.where(met_mdf.epoch < 10), x="epoch", y="value", palette="flare", ax=ax);
 
     plt.tight_layout();
     plt.savefig("metrics.png", dpi=300);
