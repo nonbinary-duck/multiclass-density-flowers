@@ -31,9 +31,11 @@ def plot_metrics():
     ax = plt.subplot(1,1,1);
     ax.set_title("Performance after 9th epoch")
     line_val  = ax.plot("epoch", "val_mae", label="val_mae", data=met_df.where(met_df.epoch >= 10), color="darkolivegreen");
+    ax.set_ylabel("val_mae");
     # sns.lineplot(data=met_df.where(met_df.epoch >= 10), x="epoch", y="train_loss", ax=ax.twinx());
     axt = ax.twinx();
     line_loss = axt.plot("epoch", "train_loss", label="loss_mse", data=met_df.where(met_df.epoch >= 10), color="salmon");
+    axt.set_ylabel("loss_mae");
     lns  = line_val + line_loss;
     labs = [l.get_label() for l in lns];
     ax.legend(lns, labs);
