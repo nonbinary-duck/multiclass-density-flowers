@@ -434,30 +434,54 @@ def validate(Pre_data, model, args):
         with torch.no_grad():
             density_map_pre,_, mask_pre = model(img, target)
 
+        # ax = plt.subplot(2,2,1); ax.set_title("density_map_pre"); ax.imshow(density_map_pre.cpu().detach().numpy()[0, 0, :, :])
+        # ax = plt.subplot(2,2,2); ax.set_title("mask_pre"); ax.imshow(mask_pre.cpu().detach().numpy()[0, 0, :, :])
+        # ax = plt.subplot(2,2,3); ax.set_title("mask_pre"); ax.imshow(mask_pre.cpu().detach().numpy()[0, 1, :, :])
+        # plt.show();
+
+        # ax = plt.subplot(2,2,1); ax.set_title("softmax"); ax.imshow((F.softmax(mask_pre[0, 0:2]))
+        #     .cpu().detach().numpy()[0, :, :]);
+            
+        # ax = plt.subplot(2,2,2); ax.set_title("softmax"); ax.imshow((F.softmax(mask_pre[0, 0:2]))
+        #     .cpu().detach().numpy()[1, :, :]);
+
+        # ax = plt.subplot(2,2,3); ax.set_title("maxsoftmax[1]"); ax.imshow((torch.max(F.softmax(mask_pre[0, 0:2]), 0, keepdim=True)[1])
+        #     .cpu().detach().numpy()[0, :, :]);
+        # ax = plt.subplot(2,2,4); ax.set_title("maxsoftmax[0]"); ax.imshow((torch.max(F.softmax(mask_pre[0, 0:2]), 0, keepdim=True)[0])
+        #     .cpu().detach().numpy()[0, :, :]);
+        # plt.show();
+
         masks = [];
-        for i, cat in enumerate(categories):
-            masks.append( torch.max(F.softmax(mask_pre[0,(i*2):((i+1)*2)]), 0, keepdim=True)[1] )
-        # mask_people = torch.max(F.softmax(mask_pre[0,0:2]), 0, keepdim=True)[1]
-        # mask_bicycle = torch.max(F.softmax(mask_pre[0,2:4]), 0, keepdim=True)[1]
-        # mask_car = torch.max(F.softmax(mask_pre[0, 4:6]), 0, keepdim=True)[1]
-        # mask_van = torch.max(F.softmax(mask_pre[0, 6:8]), 0, keepdim=True)[1]
-        # mask_truck = torch.max(F.softmax(mask_pre[0,8:10]), 0, keepdim=True)[1]
-        # mask_tricycle= torch.max(F.softmax(mask_pre[0,10:12]), 0, keepdim=True)[1]
-        # mask_bus = torch.max(F.softmax(mask_pre[0, 12:14]), 0, keepdim=True)[1]
-        # mask_motor = torch.max(F.softmax(mask_pre[0, 14:16]), 0, keepdim=True)[1]
-        print(f">>>> {density_map_pre.shape}, {mask_pre.shape}, {masks}, {len(masks)}");
-        mask_pre = torch.cat(masks, 0)
-        print(f">>>> {density_map_pre.shape}, {mask_pre.shape}");
-        mask_pre = torch.unsqueeze(mask_pre, 0)
-        print(f">>>> {density_map_pre.shape}, {mask_pre.shape}");
+        for ic, cat in enumerate(categories):
+            
+            masks.append(
+                torch.max(
+                    F.softmax(mask_pre[0, ic*2:(ic+1)*2 ])
+                    , 0, keepdim=True
+                )[0]#[1]
+            );
+        
+        # print(f">>>> {density_map_pre.shape}, {mask_pre.shape}, {masks}, {len(masks)}");
+        # mask_pre = torch.cat(masks, 0)
+        # print(f">>>> {density_map_pre.shape}, {mask_pre.shape}");
+        # mask_pre = torch.unsqueeze(mask_pre, 0)
+        # print(f">>>> {density_map_pre.shape}, {mask_pre.shape}");
+        # print(">>>> EEE")
+        # print(mask_pre.shape)
+        
+        mask_pre = torch.cat( masks, dim=0 );
+        mask_pre = torch.unsqueeze(mask_pre, dim=0);
+
+        # print(">>>> LLL")
+        # print(mask_pre.shape)
         density_map_pre = torch.mul(density_map_pre, mask_pre)
 
-        print( ">>>> SHOWING VAL MODEL OUT");
-        print(f">>>> {density_map_pre.shape}, {mask_pre.shape}");
-        ax = plt.subplot(2,1,1); ax.set_title("density_map_pre"); ax.imshow(density_map_pre.cpu().detach().numpy()[0, 0, :, :])
-        ax = plt.subplot(2,1,2); ax.set_title("mask_pre"); ax.imshow(mask_pre.cpu().detach().numpy()[0, 0, :, :])
-        plt.show();
-        exit(0);
+        # print( ">>>> SHOWING VAL MODEL OUT");
+        # print(f">>>> {density_map_pre.shape}, {mask_pre.shape}");
+        # ax = plt.subplot(2,1,1); ax.set_title("density_map_pre"); ax.imshow(density_map_pre.cpu().detach().numpy()[0, 0, :, :])
+        # ax = plt.subplot(2,1,2); ax.set_title("mask_pre"); ax.imshow(mask_pre.cpu().detach().numpy()[0, 0, :, :])
+        # plt.show();
+        # exit(0);
 
         for idx in range(len(categories)):
             count = torch.sum(density_map_pre[:,idx,:,:]).item()
