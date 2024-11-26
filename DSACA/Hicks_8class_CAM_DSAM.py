@@ -68,7 +68,24 @@ def feature_test(source_img, mask_gt, gt, mask, feature, save_pth, category):
         imgs.append(save_data)
     
     for i, img in enumerate(imgs):
-        cv2.imwrite(f"{save_pth}_{i}.jpg", img);
+        fname = "";
+
+        if (i == 0):
+            fname = f"{save_pth}_INPUT.jpg"
+            cv2.imwrite(fname, img);
+
+        else:        
+            # Get the cateogry
+            cid  = int((i-1)/4);
+            # Which image in this category are we in
+            lid  = int((i-1)-(cid*4));
+            # Is a GT image
+            gt   = lid < 2;
+            # Is a mask
+            mask = (lid % 2) == 0;
+            
+            fname = f"{save_pth}_{cid}_{categories[cid]}_{"GT" if gt else "OUT"}_{"MASK" if mask else "COUNT" }.jpg";
+            cv2.imwrite(fname, cv2.applyColorMap(img, cv2.COLORMAP_PLASMA));
     # img = np.hstack(imgs)
     # for idx, image in enumerate(imgs):
     #     pth = os.path.join(os.path.dirname(save_pth), '{}.jpg'.format(idx))
@@ -84,7 +101,7 @@ def setup_seed(seed):
 def main():
     setup_seed(0)
 
-    train_file = './npydata/hicks_train.npy'
+    train_file = './npydata/hicks_train_small.npy'
     val_file = './npydata/hicks_test.npy'
 
     with open(train_file, 'rb') as outfile:
@@ -306,6 +323,14 @@ def train(Pre_data, model, criterion, optimizer, epoch, args, scheduler):
         # else:
         density_map_pre_1,density_map_pre_2, mask_pre = model(img, target)
 
+        # print( ">>>> SHOWING MODEL");
+        # print(f">>>> {density_map_pre_1.shape}, {density_map_pre_2.shape}, {mask_pre.shape}");
+        # ax = plt.subplot(2,2,1); ax.set_title("density_map_pre_1"); ax.imshow(density_map_pre_1.cpu().detach().numpy()[0, 0, :, :])
+        # ax = plt.subplot(2,2,2); ax.set_title("density_map_pre_2"); ax.imshow(density_map_pre_2.cpu().detach().numpy()[0, 0, :, :])
+        # ax = plt.subplot(2,2,3); ax.set_title("mask_pre"); ax.imshow(mask_pre.cpu().detach().numpy()[0, 0, :, :])
+        # plt.show();
+        # exit(0);
+
         torch.cuda.synchronize()
         end_time_test_2 = time.time()
         run_time_2 = end_time_test_2 - begin_time_test_2
@@ -408,17 +433,31 @@ def validate(Pre_data, model, args):
 
         with torch.no_grad():
             density_map_pre,_, mask_pre = model(img, target)
-        mask_people = torch.max(F.softmax(mask_pre[0,0:2]), 0, keepdim=True)[1]
-        mask_bicycle = torch.max(F.softmax(mask_pre[0,2:4]), 0, keepdim=True)[1]
-        mask_car = torch.max(F.softmax(mask_pre[0, 4:6]), 0, keepdim=True)[1]
-        mask_van = torch.max(F.softmax(mask_pre[0, 6:8]), 0, keepdim=True)[1]
-        mask_truck = torch.max(F.softmax(mask_pre[0,8:10]), 0, keepdim=True)[1]
-        mask_tricycle= torch.max(F.softmax(mask_pre[0,10:12]), 0, keepdim=True)[1]
-        mask_bus = torch.max(F.softmax(mask_pre[0, 12:14]), 0, keepdim=True)[1]
-        mask_motor = torch.max(F.softmax(mask_pre[0, 14:16]), 0, keepdim=True)[1]
-        mask_pre = torch.cat((mask_people, mask_bicycle, mask_car, mask_van, mask_truck, mask_tricycle, mask_bus, mask_motor), 0)
+
+        masks = [];
+        for i, cat in enumerate(categories):
+            masks.append( torch.max(F.softmax(mask_pre[0,(i*2):((i+1)*2)]), 0, keepdim=True)[1] )
+        # mask_people = torch.max(F.softmax(mask_pre[0,0:2]), 0, keepdim=True)[1]
+        # mask_bicycle = torch.max(F.softmax(mask_pre[0,2:4]), 0, keepdim=True)[1]
+        # mask_car = torch.max(F.softmax(mask_pre[0, 4:6]), 0, keepdim=True)[1]
+        # mask_van = torch.max(F.softmax(mask_pre[0, 6:8]), 0, keepdim=True)[1]
+        # mask_truck = torch.max(F.softmax(mask_pre[0,8:10]), 0, keepdim=True)[1]
+        # mask_tricycle= torch.max(F.softmax(mask_pre[0,10:12]), 0, keepdim=True)[1]
+        # mask_bus = torch.max(F.softmax(mask_pre[0, 12:14]), 0, keepdim=True)[1]
+        # mask_motor = torch.max(F.softmax(mask_pre[0, 14:16]), 0, keepdim=True)[1]
+        print(f">>>> {density_map_pre.shape}, {mask_pre.shape}, {masks}, {len(masks)}");
+        mask_pre = torch.cat(masks, 0)
+        print(f">>>> {density_map_pre.shape}, {mask_pre.shape}");
         mask_pre = torch.unsqueeze(mask_pre, 0)
+        print(f">>>> {density_map_pre.shape}, {mask_pre.shape}");
         density_map_pre = torch.mul(density_map_pre, mask_pre)
+
+        print( ">>>> SHOWING VAL MODEL OUT");
+        print(f">>>> {density_map_pre.shape}, {mask_pre.shape}");
+        ax = plt.subplot(2,1,1); ax.set_title("density_map_pre"); ax.imshow(density_map_pre.cpu().detach().numpy()[0, 0, :, :])
+        ax = plt.subplot(2,1,2); ax.set_title("mask_pre"); ax.imshow(mask_pre.cpu().detach().numpy()[0, 0, :, :])
+        plt.show();
+        exit(0);
 
         for idx in range(len(categories)):
             count = torch.sum(density_map_pre[:,idx,:,:]).item()
@@ -432,7 +471,7 @@ def validate(Pre_data, model, args):
             source_img = cv2.imread('./dataset/hicks_vdlike/test_data_class8/images/{}'.format(fname[0]))
             feature_test(source_img, mask_map.data.cpu().numpy(), target.data.cpu().numpy(), mask_pre.data.cpu().numpy(),
                          density_map_pre.data.cpu().numpy(),
-                         './vision_map/hicks_class8/img{}.jpg'.format(str(i)), categories)
+                         './vision_map/hicks_class8/img{}'.format(str(i)), categories)
 
     mae = mae*1.0 / len(test_loader)
     for idx in range(len(categories)):
