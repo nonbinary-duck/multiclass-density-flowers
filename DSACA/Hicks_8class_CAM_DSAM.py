@@ -101,7 +101,8 @@ def setup_seed(seed):
 def main():
     setup_seed(0)
 
-    train_file = './npydata/hicks_train_small.npy'
+    # train_file = './npydata/hicks_train_small.npy'
+    train_file = './npydata/hicks_train.npy'
     val_file = './npydata/hicks_test.npy'
 
     with open(train_file, 'rb') as outfile:
@@ -492,10 +493,15 @@ def validate(Pre_data, model, args):
 
         if i%50 == 0:
             print(i)
+            outdir = f"./vision_map/hicks_class8_epoch_{len(metrics["train_loss"])}";
+            # make dir if not exist
+            if (not os.path.isdir(outdir)):
+                os.mkdir(outdir);
+            
             source_img = cv2.imread('./dataset/hicks_vdlike/test_data_class8/images/{}'.format(fname[0]))
             feature_test(source_img, mask_map.data.cpu().numpy(), target.data.cpu().numpy(), mask_pre.data.cpu().numpy(),
                          density_map_pre.data.cpu().numpy(),
-                         './vision_map/hicks_class8/img{}'.format(str(i)), categories)
+                         f'{outdir}/{i}', categories)
 
     mae = mae*1.0 / len(test_loader)
     for idx in range(len(categories)):
