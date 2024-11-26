@@ -28,7 +28,7 @@ def plot_metrics():
     # ax.set_title("Loss function trend after 9th epoch")
     # sns.regplot(data=met_df.where(met_df.epoch >= 10), x="epoch", y="train_loss", marker="x", ax=ax);
 
-    ax = plt.subplot(1,1,1);
+    ax = plt.subplot(1,2,1);
     ax.set_title("Performance after 9th epoch")
     line_val  = ax.plot("epoch", "val_mae", label="val_mae", data=met_df.where(met_df.epoch >= 10), color="darkolivegreen");
     ax.set_ylabel("val_mae");
@@ -39,6 +39,18 @@ def plot_metrics():
     lns  = line_val + line_loss;
     labs = [l.get_label() for l in lns];
     ax.legend(lns, labs);
+
+    # ax = plt.subplot(1,2,2);
+    # ax.set_title("Performance after 9th epoch")
+    # line_val  = ax.plot("epoch", "val_mse", label="val_mse", data=met_df.where(met_df.epoch >= 10), color="darkolivegreen");
+    # ax.set_ylabel("val_mse");
+    # # sns.lineplot(data=met_df.where(met_df.epoch >= 10), x="epoch", y="train_loss", ax=ax.twinx());
+    # axt = ax.twinx();
+    # line_loss = axt.plot("epoch", "val_mae", label="val_mae", data=met_df.where(met_df.epoch >= 10), color="salmon");
+    # axt.set_ylabel("val_mae");
+    # lns  = line_val + line_loss;
+    # labs = [l.get_label() for l in lns];
+    # ax.legend(lns, labs);
     # axt.legend();
 
     # ax = plt.subplot(1,2,2);

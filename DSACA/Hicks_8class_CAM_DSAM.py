@@ -256,6 +256,18 @@ def train(Pre_data, model, criterion, optimizer, epoch, args, scheduler):
     args.lr = optimizer.param_groups[0]['lr']
     print('epoch %d, processed %d samples, lr %.10f' % (epoch, epoch * len(train_loader.dataset), args.lr))
 
+
+    # for t in train_loader:
+
+    #     mask = t[-1].cpu();
+
+    #     for i in range(8):
+    #         ax = plt.subplot(5, 2, i+1);
+    #         ax.imshow(mask[0, i, :, :]);
+    #         plt.tight_layout();
+    #     plt.show();
+    #     exit(0);
+
     model.train()
     end = time.time()
     loss_ave = 0.0
