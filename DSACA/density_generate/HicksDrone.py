@@ -94,13 +94,14 @@ def feature_test(feature, save_pth, category):
         np.seterr(divide='ignore', invalid='ignore')
         save_data = 255 * feature[i,:,:] / np.max(feature[i,:,:])
         save_data = save_data.astype(np.uint8)
-        save_data = cv2.applyColorMap(save_data, 2)
-        cv2.imwrite(os.path.join(save_pth, '{}{}'.format(category[i+1], '.png')), save_data)
+        
+        save_data = cv2.applyColorMap(save_data, cv2.COLORMAP_PLASMA)
+        cv2.imwrite(os.path.join(save_pth, '{}{}'.format(category[i], '.png')), save_data)
 
 ' 类别的顺序需要按照可视化来确定 '
 #“无视区域”，“行人”，“人”，“自行车”，“汽车”，“货车”，“卡车”，“三轮车”，“遮阳篷三轮车”，“公共汽车”，“摩托”，“其他” '
 # VisDrone_category_buf = [ 'ignored-regions', 'pedestrian', 'people', 'bicycle', 'car', 'van', 'truck', 'tricycle', 'awning-tricycle', 'bus', 'motor', 'others']
-hicks_category_buf = ['leucanthemum_vulgare', 'raununculus_spp', 'heracleum_sphondylium', 'silene_dioica-latifolia', 'trifolium_repens', 'cirsium_arvense', 'stachys_sylvatica', 'rubus_fruticosus_agg', 'vicia_cracca']
+hicks_category_buf = ['leucanthemum_vulgare', 'raununculus_spp', 'heracleum_sphondylium', 'silene_dioica-latifolia', 'trifolium_repens', 'cirsium_arvense', 'stachys_sylvatica', 'rubus_fruticosus_agg']
 kernel_size_buf = [4, 8, 8, 8, 6, 6, 8, 8]
 color_buf = [(0, 0, 255), (0, 255, 0), (255, 0, 0),
              (0, 125, 125), (125, 0, 125), (125, 125, 0),
@@ -136,7 +137,7 @@ for pth in img_paths:
     points = [] # 多边形的顶点坐标 # Coordinates of the vertices of a polygon
 
     '''有效类别只有 Valid categories are only len(VisDrone_category_buf)-2  类 resemble'''
-    kpoint = np.zeros((len(hicks_category_buf) - 1, img.shape[0], img.shape[1])).astype(np.uint8)
+    kpoint = np.zeros((len(hicks_category_buf), img.shape[0], img.shape[1])).astype(np.uint8)
     for item in bbox:
         # #print(VisDrone_category_buf[int(item[5])])
         # if (str(hicks_category_buf[int(item[5])]).find('people')>=0) | (str(hicks_category_buf[int(item[5])]).find('pedestrian')>=0)  :
@@ -156,7 +157,7 @@ for pth in img_paths:
         new_y = min(new_y, kpoint.shape[2] - 1);
         #print(source_shape, math.floor(new_x), math.floor(new_y))
         # print(item[5]);
-        kpoint[int(item[5])-1, math.floor(new_x), math.floor(new_y)] = 1
+        kpoint[int(item[5]), math.floor(new_x), math.floor(new_y)] = 1
 
         # elif str(hicks_category_buf[int(item[5])]).find('ignored-regions') >= 0:
         #     top = int(item[0])
