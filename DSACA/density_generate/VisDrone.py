@@ -133,7 +133,7 @@ for pth in img_paths:
     points = [] # 多边形的顶点坐标
 
     '''有效类别只有  len(VisDrone_category_buf)-2  类'''
-    kpoint = np.zeros((len(VisDrone_category_buf)-2, img.shape[0], img.shape[1])).astype(np.uint8)
+    kpoint = np.zeros((len(VisDrone_category_buf)-2, img.shape[0], img.shape[1])).astype(np.int8)
     for item in bbox:
         #print(VisDrone_category_buf[int(item[5])])
         if (str(VisDrone_category_buf[int(item[5])]).find('people')>=0) | (str(VisDrone_category_buf[int(item[5])]).find('pedestrian')>=0)  :
