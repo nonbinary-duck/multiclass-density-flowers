@@ -24,6 +24,9 @@ import scipy.ndimage
 import cv2
 
 import pandas as pd
+import matplotlib
+import matplotlib.colors
+import matplotlib.pyplot as plt
 
 
 torch.cuda.manual_seed(args.seed)
@@ -80,7 +83,7 @@ def setup_seed(seed):
 def main():
     setup_seed(0)
 
-    train_file = './npydata/VisDrone_train.npy'
+    train_file = './npydata/VisDrone_train_small.npy'
     val_file = './npydata/VisDrone_test.npy'
 
     with open(train_file, 'rb') as outfile:
@@ -420,6 +423,110 @@ def validate(Pre_data, model, args):
 
         with torch.no_grad():
             density_map_pre,_, mask_pre = model(img, target)
+
+        print(fname);
+
+        norm = matplotlib.colors.Normalize(vmin=np.min(density_map_pre.cpu().detach().numpy()[0, :, :, :]), vmax=np.max(density_map_pre.cpu().detach().numpy()[0, :, :, :]));
+        fig, axs = plt.subplots(4,2);
+        images = [];
+
+        print(f"vmin={np.min(density_map_pre.cpu().detach().numpy()[0, :, :, :])}, vmax={np.max(density_map_pre.cpu().detach().numpy()[0, :, :, :])}");
+
+        for i in range(8):
+            iimg = density_map_pre.cpu().detach().numpy()[0, i, :, :];
+            ax = axs.flat[i];
+            ax.set_title(f"count {categories[i]}={np.sum(iimg):.3f}");
+            images.append(ax.imshow(iimg, cmap="plasma", norm=norm));
+        
+        fig.colorbar(images[0], ax=axs, orientation='horizontal', fraction=.1);
+        # fig.tight_layout();
+        plt.savefig(f"tempout/visdrone/{fname[0]}_densities.png", dpi=600);
+        # plt.show();
+
+        norm = matplotlib.colors.Normalize(vmin=np.min(mask_pre.cpu().detach().numpy()[0, :, :, :]), vmax=np.max(mask_pre.cpu().detach().numpy()[0, :, :, :]));
+        fig, axs = plt.subplots(4,4);
+        images = [];
+
+        for i in range(16):
+            iimg = mask_pre.cpu().detach().numpy()[0, i, :, :];
+            ax = axs.flat[i];
+            ax.set_title(f"mask {i} {categories[math.floor(i/2)]} = {np.sum(iimg):.3f}");
+            images.append(ax.imshow(iimg, cmap="plasma", norm=norm));
+        
+        fig.colorbar(images[0], ax=axs, orientation='horizontal', fraction=.1);
+        # fig.tight_layout();
+        plt.savefig(f"tempout/visdrone/{fname[0]}_raw_maps.png", dpi=600);
+        # plt.show();
+
+        # ax = plt.subplot(2,2,1); ax.set_title("density_map_pre"); ax.imshow(density_map_pre.cpu().detach().numpy()[0, 0, :, :])
+        # ax = plt.subplot(2,2,2); ax.set_title("mask_pre"); ax.imshow(mask_pre.cpu().detach().numpy()[0, 0, :, :])
+        # ax = plt.subplot(2,2,3); ax.set_title("mask_pre"); ax.imshow(mask_pre.cpu().detach().numpy()[0, 1, :, :])
+        # plt.show();
+
+        # ax = plt.subplot(2,2,1); ax.set_title("softmax"); ax.imshow((F.softmax(mask_pre[0, 0:2]))
+        #     .cpu().detach().numpy()[0, :, :]);
+            
+        # ax = plt.subplot(2,2,2); ax.set_title("softmax"); ax.imshow((F.softmax(mask_pre[0, 0:2]))
+        #     .cpu().detach().numpy()[1, :, :]);
+
+        # ax = plt.subplot(2,2,3); ax.set_title("maxsoftmax[1]"); ax.imshow((torch.max(F.softmax(mask_pre[0, 0:2]), 0, keepdim=True)[1])
+        #     .cpu().detach().numpy()[0, :, :]);
+        # ax = plt.subplot(2,2,4); ax.set_title("maxsoftmax[0]"); ax.imshow((torch.max(F.softmax(mask_pre[0, 0:2]), 0, keepdim=True)[0])
+        #     .cpu().detach().numpy()[0, :, :]);
+        # plt.show();
+
+
+        applied_masks = mask_pre.cpu().detach().numpy()[0, :, :, :].copy();
+        for i in range(16):
+            j=math.floor(i/2);
+            applied_masks[i] = torch.max(F.softmax(mask_pre[0, j*2:(j+1)*2 ]), 0, keepdim=True)[i%2].cpu().detach().numpy()
+
+        norm = matplotlib.colors.Normalize(vmin=np.min(applied_masks), vmax=np.max(applied_masks));
+        fig, axs = plt.subplots(4,4);
+        fig.suptitle("maxsoftmax");
+        images = [];
+            
+
+        for i in range(16):
+            iimg = applied_masks[i, :, :];
+            ax = axs.flat[i];
+            ax.set_title(f"maxsoftmax[{i%2}] {i} {categories[math.floor(i/2)][:4]} = {np.sum(iimg):.3f}");
+            images.append(ax.imshow(iimg, cmap="plasma", norm=norm));
+
+        fig.colorbar(images[0], ax=axs, orientation='horizontal', fraction=.1);
+        # fig.tight_layout();
+        plt.savefig(f"tempout/visdrone/{fname[0]}_modified_maps.png", dpi=600);
+        # plt.show();
+
+        norm = matplotlib.colors.Normalize(vmin=np.min(target.cpu().detach().numpy()[0, :, :, :]), vmax=np.max(target.cpu().detach().numpy()[0, :, :, :]));
+        fig, axs = plt.subplots(4,2);
+        images = [];
+
+        for i in range(8):
+            iimg = target.cpu().detach().numpy()[0, i, :, :];
+            ax = axs.flat[i];
+            ax.set_title(f"tcount {categories[i]}={np.sum(iimg):.3f}");
+            images.append(ax.imshow(iimg, cmap="plasma", norm=norm));
+        
+        fig.colorbar(images[0], ax=axs, orientation='horizontal', fraction=.1);
+        plt.savefig(f"tempout/visdrone/{fname[0]}_TARGET_densities.png", dpi=600);
+
+        norm = matplotlib.colors.Normalize(vmin=np.min(mask_map.cpu().detach().numpy()[0, :, :, :]), vmax=np.max(mask_map.cpu().detach().numpy()[0, :, :, :]));
+        fig, axs = plt.subplots(4,2);
+        images = [];
+
+        for i in range(8):
+            iimg = mask_map.cpu().detach().numpy()[0, i, :, :];
+            ax = axs.flat[i];
+            ax.set_title(f"tmask {categories[i]}={np.sum(iimg):.3f}");
+            images.append(ax.imshow(iimg, cmap="plasma", norm=norm));
+        
+        fig.colorbar(images[0], ax=axs, orientation='horizontal', fraction=.1);
+        plt.savefig(f"tempout/visdrone/{fname[0]}_TARGET_mask.png", dpi=600);
+        plt.figure();
+        plt.imshow(np.transpose(img.cpu().detach().numpy()[0,:,:,:], (1,2,0)));
+        plt.savefig(f"tempout/visdrone/{fname[0]}_input.png", dpi=600);
+        
         mask_people = torch.max(F.softmax(mask_pre[0,0:2]), 0, keepdim=True)[1]
         mask_bicycle = torch.max(F.softmax(mask_pre[0,2:4]), 0, keepdim=True)[1]
         mask_car = torch.max(F.softmax(mask_pre[0, 4:6]), 0, keepdim=True)[1]

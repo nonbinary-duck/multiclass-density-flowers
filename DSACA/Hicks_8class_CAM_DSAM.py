@@ -24,7 +24,8 @@ import scipy.ndimage
 import cv2
 
 import pandas as pd
-
+import matplotlib
+import matplotlib.colors
 
 torch.cuda.manual_seed(args.seed)
 
@@ -101,8 +102,8 @@ def setup_seed(seed):
 def main():
     setup_seed(0)
 
-    # train_file = './npydata/hicks_train_small.npy'
-    train_file = './npydata/hicks_train.npy'
+    train_file = './npydata/hicks_train_small.npy'
+    # train_file = './npydata/hicks_train.npy'
     val_file = './npydata/hicks_test.npy'
 
     with open(train_file, 'rb') as outfile:
@@ -110,20 +111,9 @@ def main():
     with open(val_file, 'rb') as outfile:
         val_list = np.load(outfile).tolist()
 
-    # net = VGG()
-    #
-    # params = list(net.parameters())
-    # k = 0
-    # for i in params:
-    #     l = 1
-    #     for j in i.size():
-    #         l  = l * j
-    #     k = k + l
-    # print("i===" + str(k /(1000000.)))
 
+    # Assemble our model and tell PyTorch we want GPU compute
     model = VGG()
-
-
     model = nn.DataParallel(model, device_ids=[0])
     model = model.cuda()
 
@@ -135,6 +125,7 @@ def main():
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=args.lr_step, gamma=0.1, last_epoch=-1)
     print(args.pre)
 
+    # Load a checkpoint if we have one specified as an argument
     if args.pre:
         if os.path.isfile(args.pre):
             print("=> loading checkpoint '{}'".format(args.pre))
@@ -183,15 +174,6 @@ def main():
 
         for i, cat in enumerate(categories):
             print(f"*\t best {cat}_MAE {best_maes[i]:.3f} \t best {cat}_MSE {best_mses[i]:3f}");
-        
-        # print('*\tbest people_MAE {people_mae:.3f} \tbest people_MSE {people_mse:.3f}'.format(people_mae=best_people_mae,people_mse=best_people_mse))
-        # print('*\tbest bicycle_MAE {bicycle_mae:.3f} \tbest bicycle_MSE {bicycle_mse:.3f}'.format(bicycle_mae=best_bicycle_mae,bicycle_mse=best_bicycle_mse))
-        # print('*\tbest car_MAE {car_mae:.3f} \tbest car_MSE {car_mse:.3f}'.format(car_mae=best_car_mae,car_mse=best_car_mse))
-        # print('*\tbest van_MAE {van_mae:.3f} \tbest van_MSE {van_mse:.3f}'.format(van_mae=best_van_mae,van_mse=best_van_mse))
-        # print('*\tbest truck_MAE {truck_mae:.3f} \tbest truck_MSE {truck_mse:.3f}'.format(truck_mae=best_truck_mae,truck_mse=best_truck_mse))
-        # print('*\tbest tricycle_MAE {tricycle_mae:.3f} \tbest tricycle_MSE {tricycle_mse:.3f}'.format(tricycle_mae=best_tricycle_mae,tricycle_mse=best_tricycle_mse))
-        # print('*\tbest bus_MAE {bus_mae:.3f} \tbest bus_MSE {bus_mse:.3f}'.format(bus_mae=best_bus_mae,bus_mse=best_bus_mse))
-        # print('*\tbest motor_MAE {motor_mae:.3f} \tbest motor_MSE {motor_mse:.3f}'.format(motor_mae=best_motor_mae,motor_mse=best_motor_mse))
 
 
         save_checkpoint({
@@ -281,8 +263,10 @@ def train(Pre_data, model, criterion, optimizer, epoch, args, scheduler):
 
     #     for i in range(8):
     #         ax = plt.subplot(5, 2, i+1);
-    #         ax.imshow(mask[0, i, :, :]);
+    #         ax.imshow(mask[0, i, :, :], cmap="plasma");
     #         plt.tight_layout();
+    #     plt.show();
+    #     plt.imshow(mask[0,3,:,:], cmap="plasma");
     #     plt.show();
     #     exit(0);
 
@@ -372,6 +356,11 @@ def train(Pre_data, model, criterion, optimizer, epoch, args, scheduler):
 
 
         # print('mse_loss=',criterion[0](density_map_pre, target).item())
+        print(">>>>>>>>>>");
+        print(mask_people_map.shape);
+        print(mask_people_pre.shape);
+        print(mask_pre[0,]);
+        exit(0)
 
         losses.update(loss.item(), img.size(0))
         optimizer.zero_grad()
@@ -435,6 +424,41 @@ def validate(Pre_data, model, args):
         with torch.no_grad():
             density_map_pre,_, mask_pre = model(img, target)
 
+
+        print(fname);
+
+        norm = matplotlib.colors.Normalize(vmin=np.min(density_map_pre.cpu().detach().numpy()[0, :, :, :]), vmax=np.max(density_map_pre.cpu().detach().numpy()[0, :, :, :]));
+        fig, axs = plt.subplots(4,2);
+        images = [];
+
+        print(f"vmin={np.min(density_map_pre.cpu().detach().numpy()[0, :, :, :])}, vmax={np.max(density_map_pre.cpu().detach().numpy()[0, :, :, :])}");
+
+        for i in range(8):
+            iimg = density_map_pre.cpu().detach().numpy()[0, i, :, :];
+            ax = axs.flat[i];
+            ax.set_title(f"count {categories[i]}={np.sum(iimg):.3f}");
+            images.append(ax.imshow(iimg, cmap="plasma", norm=norm));
+        
+        fig.colorbar(images[0], ax=axs, orientation='horizontal', fraction=.1);
+        # fig.tight_layout();
+        plt.savefig(f"tempout/hicks/{fname[0]}_densities.png", dpi=600);
+        # plt.show();
+
+        norm = matplotlib.colors.Normalize(vmin=np.min(mask_pre.cpu().detach().numpy()[0, :, :, :]), vmax=np.max(mask_pre.cpu().detach().numpy()[0, :, :, :]));
+        fig, axs = plt.subplots(4,4);
+        images = [];
+
+        for i in range(16):
+            iimg = mask_pre.cpu().detach().numpy()[0, i, :, :];
+            ax = axs.flat[i];
+            ax.set_title(f"mask {i} {categories[math.floor(i/2)]} = {np.sum(iimg):.3f}");
+            images.append(ax.imshow(iimg, cmap="plasma", norm=norm));
+        
+        fig.colorbar(images[0], ax=axs, orientation='horizontal', fraction=.1);
+        # fig.tight_layout();
+        plt.savefig(f"tempout/hicks/{fname[0]}_raw_maps.png", dpi=600);
+        # plt.show();
+
         # ax = plt.subplot(2,2,1); ax.set_title("density_map_pre"); ax.imshow(density_map_pre.cpu().detach().numpy()[0, 0, :, :])
         # ax = plt.subplot(2,2,2); ax.set_title("mask_pre"); ax.imshow(mask_pre.cpu().detach().numpy()[0, 0, :, :])
         # ax = plt.subplot(2,2,3); ax.set_title("mask_pre"); ax.imshow(mask_pre.cpu().detach().numpy()[0, 1, :, :])
@@ -451,6 +475,58 @@ def validate(Pre_data, model, args):
         # ax = plt.subplot(2,2,4); ax.set_title("maxsoftmax[0]"); ax.imshow((torch.max(F.softmax(mask_pre[0, 0:2]), 0, keepdim=True)[0])
         #     .cpu().detach().numpy()[0, :, :]);
         # plt.show();
+
+
+        applied_masks = mask_pre.cpu().detach().numpy()[0, :, :, :].copy();
+        for i in range(16):
+            j=math.floor(i/2);
+            applied_masks[i] = torch.max(F.softmax(mask_pre[0, j*2:(j+1)*2 ]), 0, keepdim=True)[i%2].cpu().detach().numpy()
+
+        norm = matplotlib.colors.Normalize(vmin=np.min(applied_masks), vmax=np.max(applied_masks));
+        fig, axs = plt.subplots(4,4);
+        fig.suptitle("maxsoftmax");
+        images = [];
+            
+
+        for i in range(16):
+            iimg = applied_masks[i, :, :];
+            ax = axs.flat[i];
+            ax.set_title(f"maxsoftmax[{i%2}] {i} {categories[math.floor(i/2)][:4]} = {np.sum(iimg):.3f}");
+            images.append(ax.imshow(iimg, cmap="plasma", norm=norm));
+
+        fig.colorbar(images[0], ax=axs, orientation='horizontal', fraction=.1);
+        # fig.tight_layout();
+        plt.savefig(f"tempout/hicks/{fname[0]}_modified_maps.png", dpi=600);
+        # plt.show();
+
+        norm = matplotlib.colors.Normalize(vmin=np.min(target.cpu().detach().numpy()[0, :, :, :]), vmax=np.max(target.cpu().detach().numpy()[0, :, :, :]));
+        fig, axs = plt.subplots(4,2);
+        images = [];
+
+        for i in range(8):
+            iimg = target.cpu().detach().numpy()[0, i, :, :];
+            ax = axs.flat[i];
+            ax.set_title(f"tcount {categories[i]}={np.sum(iimg):.3f}");
+            images.append(ax.imshow(iimg, cmap="plasma", norm=norm));
+        
+        fig.colorbar(images[0], ax=axs, orientation='horizontal', fraction=.1);
+        plt.savefig(f"tempout/hicks/{fname[0]}_TARGET_densities.png", dpi=600);
+
+        norm = matplotlib.colors.Normalize(vmin=np.min(mask_map.cpu().detach().numpy()[0, :, :, :]), vmax=np.max(mask_map.cpu().detach().numpy()[0, :, :, :]));
+        fig, axs = plt.subplots(4,2);
+        images = [];
+
+        for i in range(8):
+            iimg = mask_map.cpu().detach().numpy()[0, i, :, :];
+            ax = axs.flat[i];
+            ax.set_title(f"tmask {categories[i]}={np.sum(iimg):.3f}");
+            images.append(ax.imshow(iimg, cmap="plasma", norm=norm));
+        
+        fig.colorbar(images[0], ax=axs, orientation='horizontal', fraction=.1);
+        plt.savefig(f"tempout/hicks/{fname[0]}_TARGET_mask.png", dpi=600);
+        plt.figure();
+        plt.imshow(np.transpose(img.cpu().detach().numpy()[0,:,:,:], (1,2,0)));
+        plt.savefig(f"tempout/hicks/{fname[0]}_input.png", dpi=600);
 
         masks = [];
         for ic, cat in enumerate(categories):
@@ -470,12 +546,12 @@ def validate(Pre_data, model, args):
         # print(">>>> EEE")
         # print(mask_pre.shape)
         
-        mask_pre = torch.cat( masks, dim=0 );
-        mask_pre = torch.unsqueeze(mask_pre, dim=0);
+        # mask_pre = torch.cat( masks, dim=0 );
+        # mask_pre = torch.unsqueeze(mask_pre, dim=0);
 
-        # print(">>>> LLL")
-        # print(mask_pre.shape)
-        density_map_pre = torch.mul(density_map_pre, mask_pre)
+        # # print(">>>> LLL")
+        # # print(mask_pre.shape)
+        # density_map_pre = torch.mul(density_map_pre, mask_pre)
 
         # print( ">>>> SHOWING VAL MODEL OUT");
         # print(f">>>> {density_map_pre.shape}, {mask_pre.shape}");
@@ -490,6 +566,9 @@ def validate(Pre_data, model, args):
             mse[idx] +=abs(torch.sum(target[:,idx,:,:]).item()  - count) * abs(torch.sum(target[:,idx,:,:]).item()  - count)
 
         density_map_pre[density_map_pre < 0] = 0
+
+        if i > 150: exit(0);
+        else: print(i);
 
         if i%50 == 0:
             print(i)
