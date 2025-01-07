@@ -25,6 +25,8 @@ import cv2
 
 import pandas as pd
 
+import datetime
+
 
 torch.cuda.manual_seed(args.seed)
 
@@ -35,11 +37,29 @@ metrics = { "train_loss": [], "val_mae": [], "val_mse": [] };
 
 print(args)
 
-#VisDrone_category = ['pedestrian', 'people', 'bicycle', 'car', 'van', 'truck', 'tricycle', 'awning-tricycle', 'bus', 'motor']
-# categories = ['people', 'bicycle', 'car', 'van', 'truck', 'tricycle', 'bus', 'motor']
+from clearml import Task
+
+# Track this in clearml and automatically rename it based on the time and date
+task = Task.init(task_name=f"dsaca_refac_{datetime.datetime.now().replace(microsecond=0).isoformat()}", project_name="flowers")
+
+# get logger object for current task
+logger = task.get_logger()
+
+# The mapping between chanel indexes to our dataset
 categories = ['leucanthemum_vulgare', 'raununculus_spp', 'heracleum_sphondylium', 'silene_dioica-latifolia', 'trifolium_repens', 'cirsium_arvense', 'stachys_sylvatica', 'rubus_fruticosus_agg'];
+category_count = len(categories);
+
+for arg, val in args._get_kwargs():
+    task.set_parameter(f"args.{arg}", val);
+
+task.set_parameter("cat_map", categories);
+task.set_parameter("categories", category_count);
 
 def feature_test(source_img, mask_gt, gt, mask, feature, save_pth, category):
+    """
+    The function to write qualatative examples to disk
+    """
+    
     imgs = [source_img]
     for i in range(feature.shape[1]):
         np.seterr(divide='ignore', invalid='ignore')
@@ -86,11 +106,6 @@ def feature_test(source_img, mask_gt, gt, mask, feature, save_pth, category):
             
             fname = f"{save_pth}_{cid}_{categories[cid]}_{"GT" if gt else "OUT"}_{"MASK" if mask else "COUNT" }.jpg";
             cv2.imwrite(fname, cv2.applyColorMap(img, cv2.COLORMAP_PLASMA));
-    # img = np.hstack(imgs)
-    # for idx, image in enumerate(imgs):
-    #     pth = os.path.join(os.path.dirname(save_pth), '{}.jpg'.format(idx))
-    #     cv2.imwrite(pth, image)
-    # cv2.imwrite(save_pth, img)
 
 def setup_seed(seed):
     torch.manual_seed(seed)
@@ -105,28 +120,19 @@ def main():
     train_file = './npydata/hicks_train.npy'
     val_file = './npydata/hicks_test.npy'
 
+    # Load the lists of file names for validation and training
     with open(train_file, 'rb') as outfile:
         train_list = np.load(outfile).tolist()
     with open(val_file, 'rb') as outfile:
         val_list = np.load(outfile).tolist()
 
-    # net = VGG()
-    #
-    # params = list(net.parameters())
-    # k = 0
-    # for i in params:
-    #     l = 1
-    #     for j in i.size():
-    #         l  = l * j
-    #     k = k + l
-    # print("i===" + str(k /(1000000.)))
-
+    # Initalise the model
     model = VGG()
-
-
+    # Send it to the GPU
     model = nn.DataParallel(model, device_ids=[0])
     model = model.cuda()
 
+    # MSE for density, cross entropy for masks
     mse_criterion =  nn.MSELoss(size_average=False).cuda()
     ce_criterion = nn.CrossEntropyLoss().cuda()
     criterion = [mse_criterion, ce_criterion]
@@ -135,6 +141,8 @@ def main():
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=args.lr_step, gamma=0.1, last_epoch=-1)
     print(args.pre)
 
+
+    # Load a prebuilt model (or continue etc.)
     if args.pre:
         if os.path.isfile(args.pre):
             print("=> loading checkpoint '{}'".format(args.pre))
@@ -153,132 +161,117 @@ def main():
     if not os.path.exists(args.task_id):
         os.makedirs(args.task_id)
 
+    # Store the training validation results
     best_mse  = 1e5
     best_maes = [1e5 for c in categories];
     best_mses = [1e5 for c in categories];
 
+    # Begin training
     for epoch in range(args.start_epoch, args.epochs):
         start = time.time()
-        adjust_learning_rate(optimizer, epoch)
 
         end_train = time.time()
         print("train time ", end_train-start)
 
+        # Train for up to n epochs
         if epoch <= args.max_epoch:
             # train(train_pre_load, model, criterion, optimizer, epoch, args,scheduler )
-            train(train_list, model, criterion, optimizer, epoch, args,scheduler )
+            train(train_list, model, criterion, optimizer, epoch, args, scheduler);
 
-        #prec1, visi = validate(test_pre_load, model, args)
-        mae, mse, visi = validate(val_list, model, args)
+        # Run validation
+        mae, mse, visi = validate(val_list, model, args);
 
-        prec1 = np.mean(mae)
-        is_best = prec1 < args.best_pred
-        args.best_pred = min(prec1, args.best_pred)
+        # Check if this epoch is the current best
+        val_mae = np.mean(mae);
+        is_best = val_mae < args.best_pred;
+        args.best_pred = min(val_mae, args.best_pred);
         if is_best:
             best_mse = np.mean(mse)
             best_maes = mae.copy();
             best_mses = mse.copy();
             
-        print('*\tbest MAE {mae:.3f} \tbest MSE {mse:.3f}'.format(mae=args.best_pred, mse=best_mse))
+        print(f'*\tbest MAE {args.best_pred:.3f} \tbest MSE {best_mse:.3f}');
 
+        logger.report_scalar(title="Validation Metrics", series="mae", iteration=epoch, value=val_mae);
+        logger.report_scalar(title="Validation Metrics", series="mse", iteration=epoch, value=np.mean(mse));
+
+
+        # Report per category bests and currents
         for i, cat in enumerate(categories):
             print(f"*\t best {cat}_MAE {best_maes[i]:.3f} \t best {cat}_MSE {best_mses[i]:3f}");
+
+            logger.report_scalar(title="MAE by cat", series=f"{cat}", iteration=epoch, value=mae[i]);
+            logger.report_scalar(title="MSE by cat", series=f"{cat}", iteration=epoch, value=mse[i]);
         
-        # print('*\tbest people_MAE {people_mae:.3f} \tbest people_MSE {people_mse:.3f}'.format(people_mae=best_people_mae,people_mse=best_people_mse))
-        # print('*\tbest bicycle_MAE {bicycle_mae:.3f} \tbest bicycle_MSE {bicycle_mse:.3f}'.format(bicycle_mae=best_bicycle_mae,bicycle_mse=best_bicycle_mse))
-        # print('*\tbest car_MAE {car_mae:.3f} \tbest car_MSE {car_mse:.3f}'.format(car_mae=best_car_mae,car_mse=best_car_mse))
-        # print('*\tbest van_MAE {van_mae:.3f} \tbest van_MSE {van_mse:.3f}'.format(van_mae=best_van_mae,van_mse=best_van_mse))
-        # print('*\tbest truck_MAE {truck_mae:.3f} \tbest truck_MSE {truck_mse:.3f}'.format(truck_mae=best_truck_mae,truck_mse=best_truck_mse))
-        # print('*\tbest tricycle_MAE {tricycle_mae:.3f} \tbest tricycle_MSE {tricycle_mse:.3f}'.format(tricycle_mae=best_tricycle_mae,tricycle_mse=best_tricycle_mse))
-        # print('*\tbest bus_MAE {bus_mae:.3f} \tbest bus_MSE {bus_mse:.3f}'.format(bus_mae=best_bus_mae,bus_mse=best_bus_mse))
-        # print('*\tbest motor_MAE {motor_mae:.3f} \tbest motor_MSE {motor_mse:.3f}'.format(motor_mae=best_motor_mae,motor_mse=best_motor_mse))
-
-
+        # Save this checkpoint
         save_checkpoint({
             'epoch': epoch + 1,
             'arch': args.pre,
             'state_dict': model.state_dict(),
             'best_prec1': args.best_pred,
             'optimizer': optimizer.state_dict(),
-        }, visi, is_best, args.task_id)
-        end_val = time.time()
-        print("val time",end_val - end_train)
+        }, visi, is_best, args.task_id);
 
+        # Record model outputs
+        if (is_best):
+            task.update_output_model(model_path=os.path.join(args.task_id, "visdrone_model_best.pth"));
 
-def crop(d, g):
-    g_h, g_w = g.size()[2:4]
-    d_h, d_w = d.size()[2:4]
+        end_val = time.time();
+        print(f"val time {end_val - end_train}");
 
-    d1 = d[:, :, abs(int(math.floor((d_h - g_h) / 2.0))):abs(int(math.floor((d_h - g_h) / 2.0))) + g_h,
-         abs(int(math.floor((d_w - g_w) / 2.0))):abs(int(math.floor((d_w - g_w) / 2.0))) + g_w]
-    return d1
-
-
-def choose_crop(output, target):
-    if (output.size()[2] > target.size()[2]) | (output.size()[3] > target.size()[3]):
-        output = crop(output, target)
-    if (output.size()[2] > target.size()[2]) | (output.size()[3] > target.size()[3]):
-        output = crop(output, target)
-    if (output.size()[2] < target.size()[2]) | (output.size()[3] < target.size()[3]):
-        target = crop(target, output)
-    if (output.size()[2] < target.size()[2]) | (output.size()[3] < target.size()[3]):
-        target = crop(target, output)
-    return output, target
-
-
-
-def gt_transform(pt2d, rate):
-    # print(pt2d.shape,rate)
-    pt2d = pt2d.data.cpu().numpy()
-
-    density = np.zeros((int(rate * pt2d.shape[0]) + 1, int(rate * pt2d.shape[1]) + 1))
-    pts = np.array(list(zip(np.nonzero(pt2d)[1], np.nonzero(pt2d)[0])))
-
-    # print(pts.shape,np.nonzero(pt2d)[1],np.nonzero(pt2d)[0])
-    orig = np.zeros((int(rate * pt2d.shape[0]) + 1, int(rate * pt2d.shape[1]) + 1))
-
-    for i, pt in enumerate(pts):
-        #    orig = np.zeros((int(rate*pt2d.shape[0])+1,int(rate*pt2d.shape[1])+1),dtype=np.float32)
-        orig[int(rate * pt[1]), int(rate * pt[0])] = 1.0
-    #    print(pt)
-
-    density += scipy.ndimage.filters.gaussian_filter(orig, 8)
-
-    # density_map = density
-    # density_map = density_map / np.max(density_map) * 255
-    # density_map = density_map.astype(np.uint8)
-    # density_map = cv2.applyColorMap(density_map, 2)
-    # cv2.imwrite('./temp/1.jpg', density_map)
-
-    # print(np.sum(density))
-    # print(pt2d.sum(),pts.shape, orig.sum(),density.sum())
-    return density
-
-def train(Pre_data, model, criterion, optimizer, epoch, args, scheduler):
+def train(data, model, criterion, optimizer, epoch, args, scheduler):
+    """
+    Parameters:
+        data      : Pre-processed data (inputs, density map etc. GTs)
+        model     : The model
+        criterion : The loss functions
+        optimizer : The optimizer
+        epoch     : The current epoch
+        args      : The program args
+        scheduler : The learning rate scheduler
+    """
+    
+    # Metrics
     losses = AverageMeter()
     batch_time = AverageMeter()
     data_time = AverageMeter()
 
+    # The data loader
     train_loader = torch.utils.data.DataLoader(
-        dataset.listDataset_visdrone_class_8(Pre_data, args.task_id,
-                            shuffle=True,
-                            transform=transforms.Compose([
-                                # transforms.Resize((512, 512)),
-                                transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                                                            std=[0.229, 0.224, 0.225]),
-                            ]),
-                            train=True,
-                            seen=model.module.seen,
-                            num_workers=args.workers),
-        batch_size=args.batch_size, drop_last=False)
+        batch_size  = args.batch_size,
+        drop_last   = False,
+        dataset     = dataset.listDataset_visdrone_class_8(
+            data,
+            args.task_id,
+            shuffle = True,
+            train   = True,
+            seen    = model.module.seen,
+            num_workers = args.workers,
+            transform   = transforms.Compose(
+                [
+                    # transforms.Resize((512, 512)),
+                    # Convert to tensor
+                    transforms.ToTensor(),
+                    # Normalise before we pass into the model acording to the means and std of ImageNet
+                    transforms.Normalize(
+                        mean=[0.485, 0.456, 0.406],
+                        std=[0.229, 0.224, 0.225]
+                    )
+                ]
+            )
+        )
+    );
+
+    # Upadte the args?! Bad
     args.lr = optimizer.param_groups[0]['lr']
+
+    # Status
     print('epoch %d, processed %d samples, lr %.10f' % (epoch, epoch * len(train_loader.dataset), args.lr))
 
 
+    # Villanelle debug plotting code
     # for t in train_loader:
-
     #     mask = t[-1].cpu();
-
     #     for i in range(8):
     #         ax = plt.subplot(5, 2, i+1);
     #         ax.imshow(mask[0, i, :, :]);
@@ -286,43 +279,38 @@ def train(Pre_data, model, criterion, optimizer, epoch, args, scheduler):
     #     plt.show();
     #     exit(0);
 
-    model.train()
-    end = time.time()
-    loss_ave = 0.0
+    # Put the model in train mode
+    model.train();
+    # Track how long the entire training epoch took
+    end = time.time();
 
-    begin_time_test_4=0
+    # This is updaed in our for dataloader loop
+    loss_ave = 0.0;
 
+    # Process every batch in our train loader
     for i, (fname, img, target, kpoint, mask_map) in enumerate(train_loader):
+        # Wait for all kernels in all streams on a CUDA device to complete
+        torch.cuda.synchronize();
 
-        torch.cuda.synchronize()
-        end_time_test_4 = time.time()
-        run_time_4 = end_time_test_4 - begin_time_test_4
-        # print('该循环程序运行时间4：', run_time_4)
+        # Mark the beginning of the epoch
+        time_head = time.time();
 
-        torch.cuda.synchronize()
-        begin_time_test_1 = time.time()
-
-        data_time.update(time.time() - end)
-        img = img.cuda()
-        # mask_map = mask_map.cuda()
+        # Move data for this batch to the GPU
+        img = img.cuda();
+        mask_map = mask_map.cuda();
         # img = img * mask_map[0,:,:]
         # target = target  * mask_map[0,:,:]
 
-        torch.cuda.synchronize()
-        end_time_test_1 = time.time()
-        run_time_1 = end_time_test_1 - begin_time_test_1
-        # print('该循环程序运行时间1：', run_time_1)  # 该循环程序运行时间： 1.4201874732
+        # Not sure that synchronise is needed really
+        # It should be implied that the imge is moved to the GPU
+        # Perhaps this is just for being certain about timings
+        torch.cuda.synchronize();
 
-        torch.cuda.synchronize()
-        begin_time_test_2 = time.time()
-
-        # if epoch>307:
-        #     scale = random.uniform(0.8, 1.3)
-        #     img = F.upsample_bilinear(img, scale_factor=scale)
-        #     target = torch.from_numpy(gt_transform(target, scale)).unsqueeze(0).type(torch.FloatTensor).cuda()
-        #     print(img.shape,target.shape)
-        # else:
-        density_map_pre_1,density_map_pre_2, mask_pre = model(img, target)
+        # Record the time it took to load our data onto the GPU
+        data_time.update(time.time() - time_head);
+        
+        # Pass our data forward through through the model
+        density_out_1, density_out_2, mask_out = model(img, target);
 
         # print( ">>>> SHOWING MODEL");
         # print(f">>>> {density_map_pre_1.shape}, {density_map_pre_2.shape}, {mask_pre.shape}");
@@ -332,108 +320,111 @@ def train(Pre_data, model, criterion, optimizer, epoch, args, scheduler):
         # plt.show();
         # exit(0);
 
-        torch.cuda.synchronize()
-        end_time_test_2 = time.time()
-        run_time_2 = end_time_test_2 - begin_time_test_2
-        # print('该循环程序运行时间2：', run_time_2)  # 该循环程序运行时间： 1.4201874732
+        # The reason for two, may be that one set is describing the probablility of not that class, and the other the probability of that class
+        # For each category there are two mask outputs
+        #   one representing the probability that a pixel is not classified as the category
+        #   and the second representing the probability that a pixel is in the category
 
-        torch.cuda.synchronize()
-        begin_time_test_3 = time.time()
+        # For each category, grab the two masks related to it
+        # This probably keeps the tensors on the same device (on the GPU)
+        mask_preds = [mask_out[:, i*2:(i+1)*2, :, :] for i in range(category_count)];
+        # Also slice the GT for each category
+        # TODO: Change the 0 to : for batch size greater than 1
+        mask_gts   = [torch.unsqueeze(mask_map[0, i, :, :], 0) for i in range(category_count)];
 
-        lamda = args.lamd
-        # mask_person_pre = mask_pre[0]
+        # criterion = [mse_criterion, ce_criterion]
+        # Fist get the MSE of the two density outputs
+        loss = criterion[0](density_out_1, target) + criterion[0](density_out_2, target);
+        # Cross entropy rate
+        lamda = args.lamd;
 
-        mask_people_pre = mask_pre[:, 0:2, :, :]
-        mask_bicycle_pre = mask_pre[:, 2:4, :, :]
-        mask_car_pre = mask_pre[:, 4:6, :, :]
-        mask_van_pre = mask_pre[:, 6:8, :, :]
-        mask_truck_pre = mask_pre[:, 8:10, :, :]
-        mask_tricycle_pre = mask_pre[:, 10:12, :, :]
-        mask_bus_pre = mask_pre[:, 12:14, :, :]
-        mask_motor_pre = mask_pre[:, 14:16, :, :]
-
-        mask_people_map = torch.unsqueeze(mask_map[0, 0, :, :], 0)
-        mask_bicycle_map = torch.unsqueeze(mask_map[0, 1, :, :], 0)
-        mask_car_map = torch.unsqueeze(mask_map[0, 2, :, :], 0)
-        mask_van_map = torch.unsqueeze(mask_map[0, 3, :, :], 0)
-        mask_truck_map = torch.unsqueeze(mask_map[0, 4, :, :], 0)
-        mask_tricycle_map = torch.unsqueeze(mask_map[0, 5, :, :], 0)
-        mask_bus_map = torch.unsqueeze(mask_map[0, 6, :, :], 0)
-        mask_motor_map = torch.unsqueeze(mask_map[0, 7, :, :], 0)
-        loss = criterion[0](density_map_pre_1, target)+criterion[0](density_map_pre_2, target) \
-               + lamda * criterion[1](mask_people_pre,mask_people_map.long()) \
-               + lamda * criterion[1](mask_bicycle_pre,mask_bicycle_map.long()) \
-               + lamda * criterion[1](mask_car_pre,mask_car_map.long()) \
-               + lamda * criterion[1](mask_van_pre,mask_van_map.long()) \
-               + lamda * criterion[1](mask_truck_pre, mask_truck_map.long()) \
-               + lamda * criterion[1](mask_tricycle_pre, mask_tricycle_map.long()) \
-               + lamda * criterion[1](mask_bus_pre, mask_bus_map.long()) \
-               + lamda * criterion[1](mask_motor_pre, mask_motor_map.long())
-
+        # Then compute the cross-entropy loss of the masks
+        for ci in range(category_count):
+            loss += lamda * criterion[1](mask_preds[ci], mask_gts[ci].long());
 
         # print('mse_loss=',criterion[0](density_map_pre, target).item())
 
-        losses.update(loss.item(), img.size(0))
-        optimizer.zero_grad()
+        # Update the losses average for this epoch
+        losses.update(loss.item(), img.size(0));
+        # Zer the gradients of the optimiser for the backward pass
+        optimizer.zero_grad();
+        # Propagate the loss back through the model
+        loss.backward();
+        optimizer.step();
 
-
-        loss.backward()
-
-        optimizer.step()
-
-        torch.cuda.synchronize()
-        end_time_test_3 = time.time()
-        run_time_3 = end_time_test_3 - begin_time_test_3
-        # print('该循环程序运行时间3：', run_time_3)
-
+        # Again this is waiting around literally for the purpose of getting timings
+        torch.cuda.synchronize();
         batch_time.update(time.time() - end)
         end = time.time()
 
-        torch.cuda.synchronize()
-        begin_time_test_4 = time.time()
+        # Print info about this epoch
+        if (i % args.print_freq) == 0:
+            print(f"Epoch: [{epoch}][{i}/{len(train_loader)}]\t",
+                f"Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t",
+                f"Data {data_time.val:.3f} ({data_time.avg:.3f})\t",
+                f"Loss {losses.val:.4f} ({losses.avg:.4f})\t");
 
-        if i % args.print_freq == 0:
-            print('4_Epoch: [{0}][{1}/{2}]\t'
-                  'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                  'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
-                  'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                .format(
-                epoch, i, len(train_loader), batch_time=batch_time,
-                data_time=data_time, loss=losses))
-        loss_ave  += loss.item()
-    loss_ave = loss_ave*1.0/len(train_loader)
+        loss_ave += loss.item();
+    loss_ave = loss_ave*1.0/len(train_loader);
 
-    print(loss_ave, args.lr)
+    print(f"loss_ave {loss_ave}, lr {args.lr}");
     metrics['train_loss'].append(float(loss_ave));
+    logger.report_scalar(title="Train Metrics", series="loss", iteration=epoch, value=loss_ave);
+
     
-    scheduler.step()
+    scheduler.step();
 
-def validate(Pre_data, model, args):
-    print ('begin test')
-    test_loader = torch.utils.data.DataLoader(
-        dataset.listDataset_visdrone_class_8(Pre_data, args.task_id,
-                            shuffle=False,
-                            transform=transforms.Compose([
-                                transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                                                            std=[0.229, 0.224, 0.225]),
-                            ]), train=False),)
+def validate(data, model, args):
+    """
+    Parameters:
+        data      : Pre-processed data (inputs, density map etc. GTs)
+        model     : The model
+        args      : The program args
+    """
 
+    print('begin validation');
+    
+    # The validation data loader
+    val_loader = torch.utils.data.DataLoader(
+        dataset.listDataset_visdrone_class_8(
+            data,
+            args.task_id,
+            shuffle=False,
+            train=False,
+            transform=transforms.Compose(
+                [
+                    transforms.ToTensor(),
+                    # Norm imgnet
+                    transforms.Normalize(
+                        mean=[0.485, 0.456, 0.406],
+                        std=[0.229, 0.224, 0.225]
+                    )
+                ]
+            ),
+        )
+    );
+
+    # Put the model in evaluation mode (we're not changing weights here)
     model.eval()
 
+    # Initalise
     mae = np.array([1.0]*len(categories))
     mse = np.array([1.0]*len(categories))
     visi = []
 
-    for i, (fname, img, target, kpoint, mask_map)  in enumerate(test_loader):
-        torch.set_num_threads(args.workers)
+    # Loop over every batch in the validation loader (should be batch of 1 for val suposedly)
+    for i, (fname, img, target, kpoint, mask_map)  in enumerate(val_loader):
+        torch.set_num_threads(args.workers);
 
-        img = img.cuda()
-        # mask_map = mask_map.cuda()
+        # Pass input image and gt mask to GPU
+        img = img.cuda();
+        mask_map = mask_map.cuda();
         # img = img * mask_map[0,:,:]
         # target = target  * mask_map[0,:,:]
 
+        # Pass the image forward to the model, not updating weights
         with torch.no_grad():
-            density_map_pre,_, mask_pre = model(img, target)
+            density_map_pre,_, mask_pre = model(img, target);
 
         # ax = plt.subplot(2,2,1); ax.set_title("density_map_pre"); ax.imshow(density_map_pre.cpu().detach().numpy()[0, 0, :, :])
         # ax = plt.subplot(2,2,2); ax.set_title("mask_pre"); ax.imshow(mask_pre.cpu().detach().numpy()[0, 0, :, :])
@@ -491,7 +482,7 @@ def validate(Pre_data, model, args):
 
         density_map_pre[density_map_pre < 0] = 0
 
-        if i%50 == 0:
+        if i%25 == 0:
             print(i)
             outdir = f"./vision_map/hicks_class8_epoch_{len(metrics["train_loss"])}";
             # make dir if not exist
@@ -503,22 +494,14 @@ def validate(Pre_data, model, args):
                          density_map_pre.data.cpu().numpy(),
                          f'{outdir}/{i}', categories)
 
-    mae = mae*1.0 / len(test_loader)
+    mae = mae*1.0 / len(val_loader)
     for idx in range(len(categories)):
-        mse[idx] = math.sqrt(mse[idx] / len(test_loader))
+        mse[idx] = math.sqrt(mse[idx] / len(val_loader))
 
-    # VisDrone_category = ['people', 'bicycle', 'car', 'van', 'truck', 'tricycle', 'bus', 'motor']
     print('\n* VisDrone_class8', '\targs.gpu_id:',args.gpu_id )
     for i, cat in enumerate(categories):
         print(f"* {cat}_MAE {mae[i]:.3f} \t best {cat}_MSE {mse[i]:3f}");
-    # print('* people_MAE {people_mae:.3f}  * people_MSE {people_mse:.3f}'.format(people_mae=mae[0], people_mse=mse[0]))
-    # print('* bicycle_MAE {bicycle_mae:.3f}  * bicycle_MSE {bicycle_mse:.3f}'.format(bicycle_mae=mae[1], bicycle_mse=mse[1]))
-    # print('* car_MAE {car_mae:.3f}  * car_MSE {car_mse:.3f}'.format(car_mae=mae[2], car_mse=mse[2]))
-    # print('* van_MAE {van_mae:.3f}  * van_MSE {van_mse:.3f}'.format(van_mae=mae[3], van_mse=mse[3]))
-    # print('* truck_MAE {truck_mae:.3f}  * truck_MSE {truck_mse:.3f}'.format(truck_mae=mae[4], truck_mse=mse[4]))
-    # print('* tricycle_MAE {tricycle_mae:.3f}  * tricycle_MSE {tricycle_mse:.3f}'.format(tricycle_mae=mae[5], tricycle_mse=mse[5]))
-    # print('* bus_MAE {bus_mae:.3f}  * bus_MSE {bus_mse:.3f}'.format(bus_mae=mae[6], bus_mse=mse[6]))
-    # print('* motor_MAE {motor_mae:.3f}  * motor_MSE {motor_mse:.3f}'.format(motor_mae=mae[7], motor_mse=mse[7]))
+
     print('* MAE {mae:.3f}  * MSE {mse:.3f}'.format(mae=np.mean(mae), mse=np.mean(mse)));
 
     # Save the metrics for this epoch
@@ -529,28 +512,6 @@ def validate(Pre_data, model, args):
     met_df.to_csv( os.path.join( "metrics", "metrics.csv" ) );
 
     return mae, mse, visi
-
-def adjust_learning_rate(optimizer, epoch):
-    """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
-
-    # if epoch > 100:
-    #     args.lr = 1e-5
-    # if epoch > 300:
-    #     args.lr = 1e-5
-
-
-    # for i in range(len(args.steps)):
-    #
-    #     scale = args.scales[i] if i < len(args.scales) else 1
-    #
-    #     if epoch >= args.steps[i]:
-    #         args.lr = args.lr * scale
-    #         if epoch == args.steps[i]:
-    #             break
-    #     else:
-    #         break
-    # for param_group in optimizer.param_groups:
-    #     param_group['lr'] = args.lr
 
 
 class AverageMeter(object):
