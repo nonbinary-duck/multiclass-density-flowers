@@ -450,7 +450,7 @@ def validate(data, model, args):
                 torch.max(
                     F.softmax(mask_pre[0, ic*2:(ic+1)*2 ])
                     , 0, keepdim=True
-                )[0]#[1]
+                )[1] # This is important
             );
         
         # print(f">>>> {density_map_pre.shape}, {mask_pre.shape}, {masks}, {len(masks)}");
