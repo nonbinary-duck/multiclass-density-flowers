@@ -120,7 +120,8 @@ def main():
     setup_seed(0)
 
     # train_file = './npydata/hicks_train_small.npy'
-    train_file = './npydata/VisDrone_train.npy'
+    # train_file = './npydata/VisDrone_train.npy'
+    train_file = './npydata/VisDrone_train_small.npy'
     val_file = './npydata/VisDrone_test.npy'
 
     # Load the lists of file names for validation and training
@@ -495,7 +496,8 @@ def validate(data, model, args):
             if (not os.path.isdir(outdir)):
                 os.mkdir(outdir);
             
-            source_img = cv2.imread('./dataset/hicks_vdlike/test_data_class8/images/{}'.format(fname[0]))
+            # TODO: Replaced all the hard-coded directories
+            source_img = cv2.imread('./dataset/VisDrone/test_data_class8/images/{}'.format(fname[0]))
             feature_test(source_img, mask_map.data.cpu().numpy(), target.data.cpu().numpy(), mask_pre.data.cpu().numpy(),
                          density_map_pre.data.cpu().numpy(),
                          f'{outdir}/{i}', categories)
