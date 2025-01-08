@@ -173,10 +173,8 @@ def main():
         end_train = time.time()
         print("train time ", end_train-start)
 
-        # Train for up to n epochs
-        if epoch <= args.max_epoch:
-            # train(train_pre_load, model, criterion, optimizer, epoch, args,scheduler )
-            train(train_list, model, criterion, optimizer, epoch, args, scheduler);
+        # Forward and back
+        train(train_list, model, criterion, optimizer, epoch, args, scheduler);
 
         # Run validation
         mae, mse, visi = validate(val_list, model, args);
