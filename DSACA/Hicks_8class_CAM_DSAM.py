@@ -46,7 +46,10 @@ task = Task.init(task_name=f"dsaca_refac_{datetime.datetime.now().replace(micros
 logger = task.get_logger()
 
 # The mapping between chanel indexes to our dataset
-categories = ['leucanthemum_vulgare', 'raununculus_spp', 'heracleum_sphondylium', 'silene_dioica-latifolia', 'trifolium_repens', 'cirsium_arvense', 'stachys_sylvatica', 'rubus_fruticosus_agg'];
+# categories = ['leucanthemum_vulgare', 'raununculus_spp', 'heracleum_sphondylium', 'silene_dioica-latifolia', 'trifolium_repens', 'cirsium_arvense', 'stachys_sylvatica', 'rubus_fruticosus_agg'];
+categories = ['people', 'bicycle', 'car', 'van', 'truck', 'tricycle', 'bus', 'motor']
+
+
 category_count = len(categories);
 
 for arg, val in args._get_kwargs():
@@ -117,8 +120,8 @@ def main():
     setup_seed(0)
 
     # train_file = './npydata/hicks_train_small.npy'
-    train_file = './npydata/hicks_train.npy'
-    val_file = './npydata/hicks_test.npy'
+    train_file = './npydata/VisDrone_train.npy'
+    val_file = './npydata/VisDrone_test.npy'
 
     # Load the lists of file names for validation and training
     with open(train_file, 'rb') as outfile:
@@ -487,7 +490,7 @@ def validate(data, model, args):
 
         if i%25 == 0:
             print(i)
-            outdir = f"./vision_map/hicks_class8_epoch_{len(metrics["train_loss"])}";
+            outdir = f"./vision_map/visdrone_class8_epoch_{len(metrics["train_loss"])}";
             # make dir if not exist
             if (not os.path.isdir(outdir)):
                 os.mkdir(outdir);
