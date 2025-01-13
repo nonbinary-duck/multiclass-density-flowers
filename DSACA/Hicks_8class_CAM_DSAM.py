@@ -120,8 +120,8 @@ def main():
     setup_seed(0)
 
     # train_file = './npydata/hicks_train_small.npy'
-    # train_file = './npydata/VisDrone_train.npy'
-    train_file = './npydata/VisDrone_train_small.npy'
+    train_file = './npydata/VisDrone_train.npy'
+    # train_file = './npydata/VisDrone_train_small.npy'
     val_file = './npydata/VisDrone_test.npy'
 
     # Load the lists of file names for validation and training
