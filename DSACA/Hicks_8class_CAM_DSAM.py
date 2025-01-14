@@ -40,14 +40,14 @@ print(args)
 from clearml import Task
 
 # Track this in clearml and automatically rename it based on the time and date
-task = Task.init(task_name=f"dsaca_refac_{datetime.datetime.now().replace(microsecond=0).isoformat()}", project_name="flowers")
+task = Task.init(task_name=f"DEBUG_dsaca_refac_{datetime.datetime.now().replace(microsecond=0).isoformat()}", project_name="flowers")
 
 # get logger object for current task
 logger = task.get_logger()
 
 # The mapping between chanel indexes to our dataset
-# categories = ['leucanthemum_vulgare', 'raununculus_spp', 'heracleum_sphondylium', 'silene_dioica-latifolia', 'trifolium_repens', 'cirsium_arvense', 'stachys_sylvatica', 'rubus_fruticosus_agg'];
-categories = ['people', 'bicycle', 'car', 'van', 'truck', 'tricycle', 'bus', 'motor']
+categories = ['leucanthemum_vulgare', 'raununculus_spp', 'heracleum_sphondylium', 'silene_dioica-latifolia', 'trifolium_repens', 'cirsium_arvense', 'stachys_sylvatica', 'rubus_fruticosus_agg'];
+# categories = ['people', 'bicycle', 'car', 'van', 'truck', 'tricycle', 'bus', 'motor']
 
 
 category_count = len(categories);
@@ -72,7 +72,7 @@ def feature_test(source_img, mask_gt, gt, mask, feature, save_pth, category):
         # save_data = cv2.putText(save_data, category[i], (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 2)
         imgs.append(save_data)
 
-        save_data = 255 * gt[0,i,:,:] / np.max(gt[0,i,:,:])
+        save_data = 255 * ((gt[0,i,:,:] + np.min(gt[0,i,:,:])) / np.max(gt[0,i,:,:]))
         save_data = save_data.astype(np.uint8)
         save_data = cv2.applyColorMap(save_data, 2)
         # save_data = cv2.putText(save_data, category[i], (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 2)
@@ -120,9 +120,11 @@ def main():
     setup_seed(0)
 
     # train_file = './npydata/hicks_train_small.npy'
-    train_file = './npydata/VisDrone_train.npy'
-    # train_file = './npydata/VisDrone_train_small.npy'
+    # train_file = './npydata/hicks_train.npy'
+    # train_file = './npydata/VisDrone_train.npy'
+    train_file = './npydata/VisDrone_train_small.npy'
     val_file = './npydata/VisDrone_test.npy'
+    # val_file = './npydata/hicks_test.npy'
 
     # Load the lists of file names for validation and training
     with open(train_file, 'rb') as outfile:
@@ -473,7 +475,9 @@ def validate(data, model, args):
 
         # print(">>>> LLL")
         # print(mask_pre.shape)
-        density_map_pre = torch.mul(density_map_pre, mask_pre)
+        # density_map_pre = torch.mul(density_map_pre, mask_pre)
+
+        density_map_pre[density_map_pre < 0] = 0
 
         # print( ">>>> SHOWING VAL MODEL OUT");
         # print(f">>>> {density_map_pre.shape}, {mask_pre.shape}");
@@ -487,7 +491,6 @@ def validate(data, model, args):
             mae[idx] +=abs(torch.sum(target[:,idx,:,:]).item()  - count)
             mse[idx] +=abs(torch.sum(target[:,idx,:,:]).item()  - count) * abs(torch.sum(target[:,idx,:,:]).item()  - count)
 
-        density_map_pre[density_map_pre < 0] = 0
 
         if i%25 == 0:
             print(i)
@@ -495,6 +498,33 @@ def validate(data, model, args):
             # make dir if not exist
             if (not os.path.isdir(outdir)):
                 os.mkdir(outdir);
+
+            # imgout_cxy = img.cpu().numpy()[0,:,:,:];
+            # imgout     = np.zeros((imgout_cxy.shape[1], imgout_cxy.shape[2], imgout_cxy.shape[0]));
+            # imgout[:,0,0] = imgout_cxy[0,:,0];
+            # imgout[0,:,0] = imgout_cxy[0,0,:];
+            # imgout[0,0,:] = imgout_cxy[:,0,0];
+            # plt.imshow(imgout); plt.suptitle("Input image"); plt.savefig(os.path.join(outdir, f"{i:03}_input.png"));
+
+            # for cati, cat in enumerate(categories):
+            #     imgout = density_map_pre.cpu().numpy()[0,cati,:,:];
+            #     plt.imshow(imgout); plt.suptitle(f"{cat} output={np.sum(imgout):.3f}"); plt.savefig(os.path.join(outdir, f"{i:03}_{cat}_out_count.png"));
+
+            #     imgout = target.cpu().numpy()[0,cati,:,:];
+            #     plt.imshow(imgout); plt.suptitle(f"{cat} gt={np.sum(imgout):.3f}"); plt.savefig(os.path.join(outdir, f"{i:03}_{cat}_gt_count.png"));
+
+            #     imgout = mask_pre.cpu().numpy()[0,cati,:,:];
+            #     plt.imshow(imgout); plt.suptitle(f"{cat} output={np.sum(imgout):.3f}"); plt.savefig(os.path.join(outdir, f"{i:03}_{cat}_out_mask.png"));
+
+            #     imgout = mask_map.cpu().numpy()[0,cati,:,:];
+            #     plt.imshow(imgout); plt.suptitle(f"{cat} gt={np.sum(imgout):.3f}"); plt.savefig(os.path.join(outdir, f"{i:03}_{cat}_gt_mask.png"));
+
+            # print(density_map_pre.shape)
+            # print(img.shape)
+            # exit(0);
+
+            # logger.report_image(f"{categories[0]}_out_after_mask", f"val_{i}_{fname[0]}", iteration=len(metrics["train_loss"]), image=density_map_pre.data.cpu().numpy()[0, 0, :, :], max_image_history=-1);
+            # logger.report_image(f"input", f"val_{i}_{fname[0]}", iteration=len(metrics["train_loss"]), image=img.data.cpu().numpy()[0, :, :, :], max_image_history=-1);
             
             # TODO: Replaced all the hard-coded directories
             source_img = cv2.imread('./dataset/VisDrone/test_data_class8/images/{}'.format(fname[0]))
