@@ -47,7 +47,7 @@ print(args)
 from clearml import Task
 
 # Track this in clearml and automatically rename it based on the time and date
-task = Task.init(task_name=f"dsaca_refac_hicks_batch_{datetime.datetime.now().replace(microsecond=0).isoformat()}", project_name="flowers")
+task = Task.init(task_name=f"dsaca_DEBUG_refac_hicks_batch_{datetime.datetime.now().replace(microsecond=0).isoformat()}", project_name="flowers")
 
 # get logger object for current task
 logger = task.get_logger()
@@ -227,7 +227,7 @@ def main():
 
         # Record model outputs
         if (is_best):
-            task.update_output_model(model_path=os.path.join(args.task_id, "visdrone_model_best.pth"));
+            task.update_output_model(model_path=os.path.join(args.task_id, "model_best.pth"));
 
         end_val = time.time();
         print(f"val time {end_val - end_train}");
@@ -243,6 +243,9 @@ def train(data, model, criterion, optimizer, epoch, args, scheduler):
         args      : The program args
         scheduler : The learning rate scheduler
     """
+
+    # I'm sure there is a better way to do this
+    global gpu_power_odometer_kwh, gpu_power_odometer_lastreport;
     
     # Metrics
     losses = AverageMeter()
@@ -342,7 +345,7 @@ def train(data, model, criterion, optimizer, epoch, args, scheduler):
         # This probably keeps the tensors on the same device (on the GPU)
         mask_preds = [mask_out[:, i*2:(i+1)*2, :, :] for i in range(category_count)];
         # Also slice the GT for each category
-        mask_gts   = [torch.unsqueeze(mask_map[:, i, :, :], 0) for i in range(category_count)];
+        mask_gts   = [mask_map[:, i, :, :] for i in range(category_count)];
 
         # criterion = [mse_criterion, ce_criterion]
         # Fist get the MSE of the two density outputs
@@ -352,6 +355,7 @@ def train(data, model, criterion, optimizer, epoch, args, scheduler):
 
         # Then compute the cross-entropy loss of the masks
         for ci in range(category_count):
+            # Why do we convert mask gts to long but not the floating point model output?!
             loss += lamda * criterion[1](mask_preds[ci], mask_gts[ci].long());
 
         # print('mse_loss=',criterion[0](density_map_pre, target).item())
