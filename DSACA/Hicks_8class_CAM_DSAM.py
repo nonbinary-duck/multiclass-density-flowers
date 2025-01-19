@@ -40,7 +40,7 @@ print(args)
 from clearml import Task
 
 # Track this in clearml and automatically rename it based on the time and date
-task = Task.init(task_name=f"DEBUG_dsaca_refac_{datetime.datetime.now().replace(microsecond=0).isoformat()}", project_name="flowers")
+task = Task.init(task_name=f"dsaca_refac_hicks_lr_{datetime.datetime.now().replace(microsecond=0).isoformat()}", project_name="flowers")
 
 # get logger object for current task
 logger = task.get_logger()
@@ -120,11 +120,11 @@ def main():
     setup_seed(0)
 
     # train_file = './npydata/hicks_train_small.npy'
-    # train_file = './npydata/hicks_train.npy'
+    train_file = './npydata/hicks_train.npy'
     # train_file = './npydata/VisDrone_train.npy'
-    train_file = './npydata/VisDrone_train_small.npy'
-    val_file = './npydata/VisDrone_test.npy'
-    # val_file = './npydata/hicks_test.npy'
+    # train_file = './npydata/VisDrone_train_small.npy'
+    # val_file = './npydata/VisDrone_test.npy'
+    val_file = './npydata/hicks_test.npy'
 
     # Load the lists of file names for validation and training
     with open(train_file, 'rb') as outfile:
@@ -137,6 +137,7 @@ def main():
     # Send it to the GPU
     model = nn.DataParallel(model, device_ids=[0])
     model = model.cuda()
+
 
     # MSE for density, cross entropy for masks
     mse_criterion =  nn.MSELoss(size_average=False).cuda()
@@ -527,7 +528,8 @@ def validate(data, model, args):
             # logger.report_image(f"input", f"val_{i}_{fname[0]}", iteration=len(metrics["train_loss"]), image=img.data.cpu().numpy()[0, :, :, :], max_image_history=-1);
             
             # TODO: Replaced all the hard-coded directories
-            source_img = cv2.imread('./dataset/VisDrone/test_data_class8/images/{}'.format(fname[0]))
+            # source_img = cv2.imread('./dataset/VisDrone/test_data_class8/images/{}'.format(fname[0]))
+            source_img = cv2.imread('./dataset/hicks_vdlike/test_data_class8/images/{}'.format(fname[0]))
             feature_test(source_img, mask_map.data.cpu().numpy(), target.data.cpu().numpy(), mask_pre.data.cpu().numpy(),
                          density_map_pre.data.cpu().numpy(),
                          f'{outdir}/{i}', categories)
