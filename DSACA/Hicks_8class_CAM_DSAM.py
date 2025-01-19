@@ -26,7 +26,14 @@ import cv2
 import pandas as pd
 
 import datetime
+import pynvml
 
+
+pynvml.nvmlInit();
+gpu_count = pynvml.nvmlDeviceGetCount();
+gpu_handles = [ pynvml.nvmlDeviceGetHandleByIndex(gpui) for gpui in range(gpu_count) ];
+gpu_power_odometer_kwh = 0.0; 
+gpu_power_odometer_lastreport = time.time();
 
 torch.cuda.manual_seed(args.seed)
 
@@ -40,7 +47,7 @@ print(args)
 from clearml import Task
 
 # Track this in clearml and automatically rename it based on the time and date
-task = Task.init(task_name=f"dsaca_refac_hicks_lr_{datetime.datetime.now().replace(microsecond=0).isoformat()}", project_name="flowers")
+task = Task.init(task_name=f"dsaca_refac_hicks_batch_{datetime.datetime.now().replace(microsecond=0).isoformat()}", project_name="flowers")
 
 # get logger object for current task
 logger = task.get_logger()
@@ -55,6 +62,7 @@ category_count = len(categories);
 for arg, val in args._get_kwargs():
     task.set_parameter(f"args.{arg}", val);
 
+task.set_parameter("gpus", [pynvml.nvmlDeviceGetName(gpuh) for gpuh in gpu_handles]);
 task.set_parameter("cat_map", categories);
 task.set_parameter("categories", category_count);
 
@@ -334,8 +342,7 @@ def train(data, model, criterion, optimizer, epoch, args, scheduler):
         # This probably keeps the tensors on the same device (on the GPU)
         mask_preds = [mask_out[:, i*2:(i+1)*2, :, :] for i in range(category_count)];
         # Also slice the GT for each category
-        # TODO: Change the 0 to : for batch size greater than 1
-        mask_gts   = [torch.unsqueeze(mask_map[0, i, :, :], 0) for i in range(category_count)];
+        mask_gts   = [torch.unsqueeze(mask_map[:, i, :, :], 0) for i in range(category_count)];
 
         # criterion = [mse_criterion, ce_criterion]
         # Fist get the MSE of the two density outputs
@@ -368,6 +375,21 @@ def train(data, model, criterion, optimizer, epoch, args, scheduler):
             subiter = (epoch*len(train_loader)) + i;
             logger.report_scalar(title="Mid-Epoch Loss", series="losses.avg", iteration=subiter, value=losses.avg);
             logger.report_scalar(title="Mid-Epoch Loss", series="losses.val", iteration=subiter, value=losses.val);
+
+            total_gpus_power = 0.0;
+            for gpui, gpuh in enumerate(gpu_handles):
+                # Returns mw
+                gpu_power = pynvml.nvmlDeviceGetPowerUsage(gpuh) / 1000;
+                logger.report_scalar(title="GPU Power", series=f"cuda:{gpui}", iteration=subiter, value=gpu_power);
+                total_gpus_power += gpu_power;
+
+            # Multiply the power by seconds to interpolate usage over time (in J or ws)
+            # Then /1000 to get kws, then /60^2 to get kwh
+            gpu_power_odometer_kwh += ((total_gpus_power * (time.time() - gpu_power_odometer_lastreport)) / 1000) / 60**2;
+            gpu_power_odometer_lastreport = time.time();
+            logger.report_scalar(title="GPU Power", series=f"total", iteration=subiter, value=total_gpus_power);
+            logger.report_scalar(title="GPU Power Usage", series=f"total_kwh", iteration=subiter, value=gpu_power_odometer_kwh);
+
             
             print(f"Epoch: [{epoch}][{i}/{len(train_loader)}]\t",
                 f"Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t",

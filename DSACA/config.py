@@ -6,11 +6,11 @@ parser.add_argument('--workers', type=int, default=4,
                     help='load data workers')
 parser.add_argument('--start_epoch', type=int, default=0,
                     help='start epoch for training')
-parser.add_argument('--batch_size', type=int, default=1,
+parser.add_argument('--batch_size', type=int, default=4,
                     help='input batch size for training')
-parser.add_argument('--lr', type=float, default=1e-4 * 1,
+parser.add_argument('--lr', type=float, default=1e-5 * 1,
                     help='learning rate')
-parser.add_argument('--epochs', type=int, default=150,
+parser.add_argument('--epochs', type=int, default=200,
                     help='number of epochs to train')
 parser.add_argument('--seed', type=int, default=1,
                     help='random seed')
@@ -18,7 +18,7 @@ parser.add_argument('--best_pred', type=int, default=1e5,
                     help='best pred')
 parser.add_argument('--lr_step', type=list, default=[70,90],
                     help='drop learning rate by 10')
-parser.add_argument('--max_epoch', type=int, default=150,
+parser.add_argument('--max_epoch', type=int, default=200,
                     help='which epoch to test only')
 parser.add_argument('--lamd', type=float, default=1.0,
                     help='Cross Entropy rate')

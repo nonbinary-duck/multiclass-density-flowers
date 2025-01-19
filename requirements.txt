@@ -16,3 +16,4 @@ h5py==3.12.1
 seaborn==0.13.2
 
 clearml==1.17.0
+nvidia-ml-py==12.560.30 # GPU Power usage reporting
