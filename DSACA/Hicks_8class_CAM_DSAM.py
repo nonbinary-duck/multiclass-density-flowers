@@ -66,7 +66,7 @@ task.set_parameter("gpus", [pynvml.nvmlDeviceGetName(gpuh) for gpuh in gpu_handl
 task.set_parameter("cat_map", categories);
 task.set_parameter("categories", category_count);
 
-def feature_test(source_img, mask_gt, gt, mask, feature, save_pth, category):
+def feature_test(source_img, mask_gt, gt, mask, feature, save_pth, category, img_name):
     """
     The function to write qualatative examples to disk
     """
@@ -102,10 +102,10 @@ def feature_test(source_img, mask_gt, gt, mask, feature, save_pth, category):
         fname = "";
 
         if (i == 0):
-            fname = f"{save_pth}_INPUT.jpg"
+            fname = f"{save_pth}_{img_name}_INPUT.jpg"
             cv2.imwrite(fname, img);
 
-        else:        
+        else:
             # Get the cateogry
             cid  = int((i-1)/4);
             # Which image in this category are we in
@@ -115,7 +115,7 @@ def feature_test(source_img, mask_gt, gt, mask, feature, save_pth, category):
             # Is a mask
             mask = (lid % 2) == 0;
             
-            fname = f"{save_pth}_{cid}_{categories[cid]}_{"GT" if gt else "OUT"}_{"MASK" if mask else "COUNT" }.jpg";
+            fname = f"{save_pth}_{img_name}_{cid}_{categories[cid]}_{"GT" if gt else "OUT"}_{"MASK" if mask else "COUNT" }.jpg";
             cv2.imwrite(fname, cv2.applyColorMap(img, cv2.COLORMAP_PLASMA));
 
 def setup_seed(seed):
@@ -228,6 +228,7 @@ def main():
         # Record model outputs
         if (is_best):
             task.update_output_model(model_path=os.path.join(args.task_id, "model_best.pth"));
+            task.set_user_properties(best_model_epoch=epoch+1);
 
         end_val = time.time();
         print(f"val time {end_val - end_train}");
@@ -558,7 +559,7 @@ def validate(data, model, args):
             source_img = cv2.imread('./dataset/hicks_vdlike/test_data_class8/images/{}'.format(fname[0]))
             feature_test(source_img, mask_map.data.cpu().numpy(), target.data.cpu().numpy(), mask_pre.data.cpu().numpy(),
                          density_map_pre.data.cpu().numpy(),
-                         f'{outdir}/{i}', categories)
+                         f'{outdir}/{i}', categories, fname[0])
 
     mae = mae*1.0 / len(val_loader)
     for idx in range(len(categories)):
