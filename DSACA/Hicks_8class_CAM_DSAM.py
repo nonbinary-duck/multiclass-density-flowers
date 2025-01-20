@@ -393,7 +393,7 @@ def train(data, model, criterion, optimizer, epoch, args, scheduler):
         end = time.time()
 
         # Print info about this epoch
-        if (i % (args.print_freq / args.batch_size)) == 0:
+        if (i % max(1,int(args.print_freq / args.batch_size))) == 0:
             # Also report mid-epoch stuff
             subiter = (epoch*len(train_loader)*args.batch_size) + i;
             logger.report_scalar(title="Mid-Epoch Loss", series="losses.avg", iteration=subiter, value=losses.avg);
