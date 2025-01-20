@@ -72,37 +72,41 @@ def feature_test(source_img, mask_gt, gt, mask, feature, save_pth, category, img
     """
     
     imgs = [source_img]
+    cmap = cv2.COLORMAP_PLASMA;
+
     for i in range(feature.shape[1]):
         np.seterr(divide='ignore', invalid='ignore')
         save_data = 255 * mask_gt[0, i,:,:] / np.max(mask_gt[0, i,:,:])
         save_data = save_data.astype(np.uint8)
-        save_data = cv2.applyColorMap(save_data, 2)
+        save_data = cv2.applyColorMap(save_data, cmap)
         # save_data = cv2.putText(save_data, category[i], (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 2)
         imgs.append(save_data)
 
         save_data = 255 * ((gt[0,i,:,:] + np.min(gt[0,i,:,:])) / np.max(gt[0,i,:,:]))
         save_data = save_data.astype(np.uint8)
-        save_data = cv2.applyColorMap(save_data, 2)
+        save_data = cv2.applyColorMap(save_data, cmap)
         # save_data = cv2.putText(save_data, category[i], (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 2)
         imgs.append(save_data)
 
         save_data = 255 * mask[0,i,:,:] / np.max(mask[0,i,:,:])
         save_data = save_data.astype(np.uint8)
-        save_data = cv2.applyColorMap(save_data, 2)
+        save_data = cv2.applyColorMap(save_data, cmap)
         # save_data = cv2.putText(save_data, category[i], (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 2)
         imgs.append(save_data)
 
         save_data = 255 * feature[0,i,:,:] / np.max(feature[0,i,:,:])
         save_data = save_data.astype(np.uint8)
-        save_data = cv2.applyColorMap(save_data, 2)
+        save_data = cv2.applyColorMap(save_data, cmap)
         # save_data = cv2.putText(save_data, category[i], (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 2)
         imgs.append(save_data)
     
     for i, img in enumerate(imgs):
         fname = "";
+        epoch = len(metrics["train_loss"]);
 
         if (i == 0):
             fname = f"{save_pth}_{img_name}_INPUT.jpg"
+            logger.report_image(title=img_name, series=os.path.basename(fname), iteration=epoch, image=img);
             cv2.imwrite(fname, img);
 
         else:
@@ -116,7 +120,9 @@ def feature_test(source_img, mask_gt, gt, mask, feature, save_pth, category, img
             mask = (lid % 2) == 0;
             
             fname = f"{save_pth}_{img_name}_{cid}_{categories[cid]}_{"GT" if gt else "OUT"}_{"MASK" if mask else "COUNT" }.jpg";
-            cv2.imwrite(fname, cv2.applyColorMap(img, cv2.COLORMAP_PLASMA));
+            # img = cv2.applyColorMap(img, cv2.COLORMAP_PLASMA);
+            logger.report_image(title=img_name, series=os.path.basename(fname), iteration=epoch, image=img);
+            cv2.imwrite(fname, img);
 
 def setup_seed(seed):
     torch.manual_seed(seed)
@@ -127,8 +133,8 @@ def setup_seed(seed):
 def main():
     setup_seed(0)
 
-    # train_file = './npydata/hicks_train_small.npy'
-    train_file = './npydata/hicks_train.npy'
+    train_file = './npydata/hicks_train_small.npy'
+    # train_file = './npydata/hicks_train.npy'
     # train_file = './npydata/VisDrone_train.npy'
     # train_file = './npydata/VisDrone_train_small.npy'
     # val_file = './npydata/VisDrone_test.npy'
