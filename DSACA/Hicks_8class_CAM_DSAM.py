@@ -66,13 +66,15 @@ task.set_parameter("gpus", [pynvml.nvmlDeviceGetName(gpuh) for gpuh in gpu_handl
 task.set_parameter("cat_map", categories);
 task.set_parameter("categories", category_count);
 
-def feature_test(source_img, mask_gt, gt, mask, feature, save_pth, category, img_name):
+def feature_test(source_img, mask_gt, gt, mask, feature, save_pth, category, img_name, pre_map):
     """
     The function to write qualatative examples to disk
     """
     
     imgs = [source_img]
     cmap = cv2.COLORMAP_PLASMA;
+    epoch = len(metrics["train_loss"]);
+
 
     for i in range(feature.shape[1]):
         np.seterr(divide='ignore', invalid='ignore')
@@ -99,13 +101,23 @@ def feature_test(source_img, mask_gt, gt, mask, feature, save_pth, category, img
         save_data = cv2.applyColorMap(save_data, cmap)
         # save_data = cv2.putText(save_data, category[i], (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 2)
         imgs.append(save_data)
+
+        save_data = 255 * pre_map[0,i,:,:] / np.max(pre_map[0,i,:,:])
+        save_data = save_data.astype(np.uint8)
+        save_data = cv2.applyColorMap(save_data, cmap)
+        logger.report_image(
+            title=img_name,
+            series=os.path.basename(f"{save_pth}_{i}_OUT_COUNTRAW_{categories[i]}_{img_name}.jpg"),
+            iteration=epoch,
+            image=cv2.cvtColor(save_data, cv2.COLOR_BGR2RGB)
+        );
+
     
     for i, img in enumerate(imgs):
         fname = "";
-        epoch = len(metrics["train_loss"]);
 
         if (i == 0):
-            fname = f"{save_pth}_{img_name}_INPUT.jpg"
+            fname = f"{save_pth}_INPUT_{img_name}.jpg"
             logger.report_image(title=img_name, series=os.path.basename(fname), iteration=epoch, image=img);
             cv2.imwrite(fname, img);
 
@@ -119,9 +131,9 @@ def feature_test(source_img, mask_gt, gt, mask, feature, save_pth, category, img
             # Is a mask
             mask = (lid % 2) == 0;
             
-            fname = f"{save_pth}_{img_name}_{cid}_{categories[cid]}_{"GT" if gt else "OUT"}_{"MASK" if mask else "COUNT" }.jpg";
+            fname = f"{save_pth}_{cid}_{"GT" if gt else "OUT"}_{"MASK" if mask else "COUNT" }_{categories[cid]}_{img_name}.jpg";
             # img = cv2.applyColorMap(img, cv2.COLORMAP_PLASMA);
-            logger.report_image(title=img_name, series=os.path.basename(fname), iteration=epoch, image=img);
+            logger.report_image(title=img_name, series=os.path.basename(fname), iteration=epoch, image=cv2.cvtColor(img, cv2.COLOR_BGR2RGB));
             cv2.imwrite(fname, img);
 
 def setup_seed(seed):
@@ -133,8 +145,8 @@ def setup_seed(seed):
 def main():
     setup_seed(0)
 
-    train_file = './npydata/hicks_train_small.npy'
-    # train_file = './npydata/hicks_train.npy'
+    # train_file = './npydata/hicks_train_small.npy'
+    train_file = './npydata/hicks_train.npy'
     # train_file = './npydata/VisDrone_train.npy'
     # train_file = './npydata/VisDrone_train_small.npy'
     # val_file = './npydata/VisDrone_test.npy'
@@ -381,9 +393,9 @@ def train(data, model, criterion, optimizer, epoch, args, scheduler):
         end = time.time()
 
         # Print info about this epoch
-        if (i % args.print_freq) == 0:
+        if (i % (args.print_freq / args.batch_size)) == 0:
             # Also report mid-epoch stuff
-            subiter = (epoch*len(train_loader)) + i;
+            subiter = (epoch*len(train_loader)*args.batch_size) + i;
             logger.report_scalar(title="Mid-Epoch Loss", series="losses.avg", iteration=subiter, value=losses.avg);
             logger.report_scalar(title="Mid-Epoch Loss", series="losses.val", iteration=subiter, value=losses.val);
 
@@ -509,7 +521,10 @@ def validate(data, model, args):
 
         # print(">>>> LLL")
         # print(mask_pre.shape)
-        # density_map_pre = torch.mul(density_map_pre, mask_pre)
+        density_map_pre_orignp = density_map_pre.data.cpu().numpy();
+        density_map_pre_orignp[density_map_pre_orignp < 0] = 0;
+
+        density_map_pre = torch.mul(density_map_pre, mask_pre)
 
         density_map_pre[density_map_pre < 0] = 0
 
@@ -565,7 +580,8 @@ def validate(data, model, args):
             source_img = cv2.imread('./dataset/hicks_vdlike/test_data_class8/images/{}'.format(fname[0]))
             feature_test(source_img, mask_map.data.cpu().numpy(), target.data.cpu().numpy(), mask_pre.data.cpu().numpy(),
                          density_map_pre.data.cpu().numpy(),
-                         f'{outdir}/{i}', categories, fname[0])
+                         f'{outdir}/{i}', categories, fname[0],
+                         density_map_pre_orignp)
 
     mae = mae*1.0 / len(val_loader)
     for idx in range(len(categories)):
