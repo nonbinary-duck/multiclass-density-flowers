@@ -6,11 +6,11 @@ parser.add_argument('--workers', type=int, default=4,
                     help='load data workers')
 parser.add_argument('--start_epoch', type=int, default=0,
                     help='start epoch for training')
-parser.add_argument('--batch_size', type=int, default=6,
+parser.add_argument('--batch_size', type=int, default=1,
                     help='input batch size for training')
 parser.add_argument('--lr', type=float, default=1e-5 * 1,
                     help='learning rate')
-parser.add_argument('--epochs', type=int, default=2009,
+parser.add_argument('--epochs', type=int, default=200,
                     help='number of epochs to train')
 parser.add_argument('--seed', type=int, default=1,
                     help='random seed')
@@ -29,7 +29,7 @@ parser.add_argument('--print_freq', type=int, default=50,
 ###################################################################################
 parser.add_argument('--train_dataset', type=str, default='VisDrone',
                     help='choice train dataset')
-parser.add_argument('--pre', type=str, default='./save_file_model/VisDrone_class8/batch.pth',
+parser.add_argument('--pre', type=str,#, default='./save_file_model/VisDrone_class8/batch.pth',
                     help='pre-trained model directory')
 parser.add_argument('--task_id', type=str, default='./save_file_model/VisDrone_class8',
                     help='save checkpoint directory')

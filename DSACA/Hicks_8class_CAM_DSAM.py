@@ -47,7 +47,7 @@ print(args)
 from clearml import Task
 
 # Track this in clearml and automatically rename it based on the time and date
-task = Task.init(task_name=f"dsaca_hicks_DEBUG_batch_{datetime.datetime.now().replace(microsecond=0).isoformat()}", project_name="flowers")
+task = Task.init(task_name=f"dsaca_hicks_batch_{datetime.datetime.now().replace(microsecond=0).isoformat()}", project_name="flowers")
 
 # get logger object for current task
 logger = task.get_logger()
@@ -77,8 +77,8 @@ def setup_seed(seed):
 def main():
     setup_seed(0)
 
-    train_file = './npydata/hicks_train_small.npy'
-    # train_file = './npydata/hicks_train.npy'
+    # train_file = './npydata/hicks_train_small.npy'
+    train_file = './npydata/hicks_train.npy'
     # train_file = './npydata/VisDrone_train.npy'
     # train_file = './npydata/VisDrone_train_small.npy'
     # val_file = './npydata/VisDrone_test.npy'
@@ -410,15 +410,13 @@ def validate(data, model, args):
             );
 
         
+        # Apply the mask
         mask_pre = torch.cat( masks, dim=0 );
         mask_pre = torch.unsqueeze(mask_pre, dim=0);
 
-        # density_map_pre_orignp = density_map_pre.clone().data.cpu().numpy();
-        # density_map_pre_orignp[density_map_pre_orignp < 0] = 0;
+        density_map_pre_orignp = density_map_pre.detach().clone();
+        density_map_pre = torch.mul(density_map_pre, mask_pre);
 
-        # density_map_pre = torch.mul(density_map_pre, mask_pre)
-
-        # density_map_pre[density_map_pre < 0] = 0
 
         for idx in range(len(categories)):
             count = torch.sum(density_map_pre[:,idx,:,:]).item()
@@ -427,6 +425,9 @@ def validate(data, model, args):
 
 
         if i%25 == 0:
+            density_map_pre[density_map_pre < 0] = 0;
+            density_map_pre_orignp[density_map_pre_orignp < 0] = 0;
+
             print(f"Outputting samples on validation {i}")
             
             epoch = args.start_epoch + len(metrics["train_loss"]);
@@ -460,9 +461,9 @@ def validate(data, model, args):
 
             for cid, cat in enumerate(categories):
                 # Out count before applied mask
-                # logger.report_image(title=fname[0], series=f"{i}_{cid}_OUT_COUNTRAW_{cat}_{fname[0]}", iteration=epoch,
-                #     image=normalise_and_cmap_rgb(density_map_pre_orignp[0,cid,:,:])
-                # );
+                logger.report_image(title=fname[0], series=f"{i}_{cid}_OUT_COUNTRAW_{cat}_{fname[0]}", iteration=epoch,
+                    image=normalise_and_cmap_rgb(density_map_pre_orignp.cpu().numpy()[0,cid,:,:])
+                );
                 
                 # Out count
                 logger.report_image(title=fname[0], series=f"{i}_{cid}_OUT_COUNT_{cat}_{fname[0]}", iteration=epoch,
