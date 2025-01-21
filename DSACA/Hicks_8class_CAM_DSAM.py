@@ -47,10 +47,12 @@ print(args)
 from clearml import Task
 
 # Track this in clearml and automatically rename it based on the time and date
-task = Task.init(task_name=f"dsaca_hicks_batch_{datetime.datetime.now().replace(microsecond=0).isoformat()}", project_name="flowers")
+task = Task.init(task_name=f"dsaca_hicks_DEBUG_batch_{datetime.datetime.now().replace(microsecond=0).isoformat()}", project_name="flowers")
 
 # get logger object for current task
 logger = task.get_logger()
+# Increase logger limit
+logger.set_default_debug_sample_history(2000);
 
 # The mapping between chanel indexes to our dataset
 categories = ['leucanthemum_vulgare', 'raununculus_spp', 'heracleum_sphondylium', 'silene_dioica-latifolia', 'trifolium_repens', 'cirsium_arvense', 'stachys_sylvatica', 'rubus_fruticosus_agg'];
@@ -66,76 +68,6 @@ task.set_parameter("gpus", [pynvml.nvmlDeviceGetName(gpuh) for gpuh in gpu_handl
 task.set_parameter("cat_map", categories);
 task.set_parameter("categories", category_count);
 
-def feature_test(source_img, mask_gt, gt, mask, feature, save_pth, category, img_name, pre_map):
-    """
-    The function to write qualatative examples to disk
-    """
-    
-    imgs = [source_img]
-    cmap = cv2.COLORMAP_PLASMA;
-    epoch = len(metrics["train_loss"]);
-
-
-    for i in range(feature.shape[1]):
-        np.seterr(divide='ignore', invalid='ignore')
-        save_data = 255 * mask_gt[0, i,:,:] / np.max(mask_gt[0, i,:,:])
-        save_data = save_data.astype(np.uint8)
-        save_data = cv2.applyColorMap(save_data, cmap)
-        # save_data = cv2.putText(save_data, category[i], (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 2)
-        imgs.append(save_data)
-
-        save_data = 255 * ((gt[0,i,:,:] + np.min(gt[0,i,:,:])) / np.max(gt[0,i,:,:]))
-        save_data = save_data.astype(np.uint8)
-        save_data = cv2.applyColorMap(save_data, cmap)
-        # save_data = cv2.putText(save_data, category[i], (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 2)
-        imgs.append(save_data)
-
-        save_data = 255 * mask[0,i,:,:] / np.max(mask[0,i,:,:])
-        save_data = save_data.astype(np.uint8)
-        save_data = cv2.applyColorMap(save_data, cmap)
-        # save_data = cv2.putText(save_data, category[i], (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 2)
-        imgs.append(save_data)
-
-        save_data = 255 * feature[0,i,:,:] / np.max(feature[0,i,:,:])
-        save_data = save_data.astype(np.uint8)
-        save_data = cv2.applyColorMap(save_data, cmap)
-        # save_data = cv2.putText(save_data, category[i], (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 2)
-        imgs.append(save_data)
-
-        save_data = 255 * pre_map[0,i,:,:] / np.max(pre_map[0,i,:,:])
-        save_data = save_data.astype(np.uint8)
-        save_data = cv2.applyColorMap(save_data, cmap)
-        logger.report_image(
-            title=img_name,
-            series=os.path.basename(f"{save_pth}_{i}_OUT_COUNTRAW_{categories[i]}_{img_name}.jpg"),
-            iteration=epoch,
-            image=cv2.cvtColor(save_data, cv2.COLOR_BGR2RGB)
-        );
-
-    
-    for i, img in enumerate(imgs):
-        fname = "";
-
-        if (i == 0):
-            fname = f"{save_pth}_INPUT_{img_name}.jpg"
-            logger.report_image(title=img_name, series=os.path.basename(fname), iteration=epoch, image=img);
-            cv2.imwrite(fname, img);
-
-        else:
-            # Get the cateogry
-            cid  = int((i-1)/4);
-            # Which image in this category are we in
-            lid  = int((i-1)-(cid*4));
-            # Is a GT image
-            gt   = lid < 2;
-            # Is a mask
-            mask = (lid % 2) == 0;
-            
-            fname = f"{save_pth}_{cid}_{"GT" if gt else "OUT"}_{"MASK" if mask else "COUNT" }_{categories[cid]}_{img_name}.jpg";
-            # img = cv2.applyColorMap(img, cv2.COLORMAP_PLASMA);
-            logger.report_image(title=img_name, series=os.path.basename(fname), iteration=epoch, image=cv2.cvtColor(img, cv2.COLOR_BGR2RGB));
-            cv2.imwrite(fname, img);
-
 def setup_seed(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
@@ -145,8 +77,8 @@ def setup_seed(seed):
 def main():
     setup_seed(0)
 
-    # train_file = './npydata/hicks_train_small.npy'
-    train_file = './npydata/hicks_train.npy'
+    train_file = './npydata/hicks_train_small.npy'
+    # train_file = './npydata/hicks_train.npy'
     # train_file = './npydata/VisDrone_train.npy'
     # train_file = './npydata/VisDrone_train_small.npy'
     # val_file = './npydata/VisDrone_test.npy'
@@ -245,11 +177,15 @@ def main():
 
         # Record model outputs
         if (is_best):
-            task.update_output_model(model_path=os.path.join(args.task_id, "model_best.pth"));
+            task.update_output_model(model_path=os.path.join(args.task_id, "model_best.pth"), comment=f"Cats {categories}");
             task.set_user_properties(best_model_epoch=epoch+1);
 
         end_val = time.time();
         print(f"val time {end_val - end_train}");
+
+    print("=============");
+    print("= Finished! =");
+    print("=============");
 
 def train(data, model, criterion, optimizer, epoch, args, scheduler):
     """
@@ -303,17 +239,6 @@ def train(data, model, criterion, optimizer, epoch, args, scheduler):
     # Status
     print('epoch %d, processed %d samples, lr %.10f' % (epoch, epoch * len(train_loader.dataset), args.lr))
 
-
-    # Villanelle debug plotting code
-    # for t in train_loader:
-    #     mask = t[-1].cpu();
-    #     for i in range(8):
-    #         ax = plt.subplot(5, 2, i+1);
-    #         ax.imshow(mask[0, i, :, :]);
-    #         plt.tight_layout();
-    #     plt.show();
-    #     exit(0);
-
     # Put the model in train mode
     model.train();
     # Track how long the entire training epoch took
@@ -346,14 +271,6 @@ def train(data, model, criterion, optimizer, epoch, args, scheduler):
         
         # Pass our data forward through through the model
         density_out_1, density_out_2, mask_out = model(img, target);
-
-        # print( ">>>> SHOWING MODEL");
-        # print(f">>>> {density_map_pre_1.shape}, {density_map_pre_2.shape}, {mask_pre.shape}");
-        # ax = plt.subplot(2,2,1); ax.set_title("density_map_pre_1"); ax.imshow(density_map_pre_1.cpu().detach().numpy()[0, 0, :, :])
-        # ax = plt.subplot(2,2,2); ax.set_title("density_map_pre_2"); ax.imshow(density_map_pre_2.cpu().detach().numpy()[0, 0, :, :])
-        # ax = plt.subplot(2,2,3); ax.set_title("mask_pre"); ax.imshow(mask_pre.cpu().detach().numpy()[0, 0, :, :])
-        # plt.show();
-        # exit(0);
 
         # The reason for two, may be that one set is describing the probablility of not that class, and the other the probability of that class
         # For each category there are two mask outputs
@@ -395,7 +312,8 @@ def train(data, model, criterion, optimizer, epoch, args, scheduler):
         # Print info about this epoch
         if (i % max(1,int(args.print_freq / args.batch_size))) == 0:
             # Also report mid-epoch stuff
-            subiter = (epoch*len(train_loader)*args.batch_size) + i;
+            subiter  = (epoch*(len(train_loader))) + i;
+            subiter *= args.batch_size;
             logger.report_scalar(title="Mid-Epoch Loss", series="losses.avg", iteration=subiter, value=losses.avg);
             logger.report_scalar(title="Mid-Epoch Loss", series="losses.val", iteration=subiter, value=losses.val);
 
@@ -481,23 +399,6 @@ def validate(data, model, args):
         with torch.no_grad():
             density_map_pre,_, mask_pre = model(img, target);
 
-        # ax = plt.subplot(2,2,1); ax.set_title("density_map_pre"); ax.imshow(density_map_pre.cpu().detach().numpy()[0, 0, :, :])
-        # ax = plt.subplot(2,2,2); ax.set_title("mask_pre"); ax.imshow(mask_pre.cpu().detach().numpy()[0, 0, :, :])
-        # ax = plt.subplot(2,2,3); ax.set_title("mask_pre"); ax.imshow(mask_pre.cpu().detach().numpy()[0, 1, :, :])
-        # plt.show();
-
-        # ax = plt.subplot(2,2,1); ax.set_title("softmax"); ax.imshow((F.softmax(mask_pre[0, 0:2]))
-        #     .cpu().detach().numpy()[0, :, :]);
-            
-        # ax = plt.subplot(2,2,2); ax.set_title("softmax"); ax.imshow((F.softmax(mask_pre[0, 0:2]))
-        #     .cpu().detach().numpy()[1, :, :]);
-
-        # ax = plt.subplot(2,2,3); ax.set_title("maxsoftmax[1]"); ax.imshow((torch.max(F.softmax(mask_pre[0, 0:2]), 0, keepdim=True)[1])
-        #     .cpu().detach().numpy()[0, :, :]);
-        # ax = plt.subplot(2,2,4); ax.set_title("maxsoftmax[0]"); ax.imshow((torch.max(F.softmax(mask_pre[0, 0:2]), 0, keepdim=True)[0])
-        #     .cpu().detach().numpy()[0, :, :]);
-        # plt.show();
-
         masks = [];
         for ic, cat in enumerate(categories):
             
@@ -507,33 +408,17 @@ def validate(data, model, args):
                     , 0, keepdim=True
                 )[1] # This is important
             );
-        
-        # print(f">>>> {density_map_pre.shape}, {mask_pre.shape}, {masks}, {len(masks)}");
-        # mask_pre = torch.cat(masks, 0)
-        # print(f">>>> {density_map_pre.shape}, {mask_pre.shape}");
-        # mask_pre = torch.unsqueeze(mask_pre, 0)
-        # print(f">>>> {density_map_pre.shape}, {mask_pre.shape}");
-        # print(">>>> EEE")
-        # print(mask_pre.shape)
+
         
         mask_pre = torch.cat( masks, dim=0 );
         mask_pre = torch.unsqueeze(mask_pre, dim=0);
 
-        # print(">>>> LLL")
-        # print(mask_pre.shape)
-        density_map_pre_orignp = density_map_pre.data.cpu().numpy();
-        density_map_pre_orignp[density_map_pre_orignp < 0] = 0;
+        # density_map_pre_orignp = density_map_pre.clone().data.cpu().numpy();
+        # density_map_pre_orignp[density_map_pre_orignp < 0] = 0;
 
-        density_map_pre = torch.mul(density_map_pre, mask_pre)
+        # density_map_pre = torch.mul(density_map_pre, mask_pre)
 
-        density_map_pre[density_map_pre < 0] = 0
-
-        # print( ">>>> SHOWING VAL MODEL OUT");
-        # print(f">>>> {density_map_pre.shape}, {mask_pre.shape}");
-        # ax = plt.subplot(2,1,1); ax.set_title("density_map_pre"); ax.imshow(density_map_pre.cpu().detach().numpy()[0, 0, :, :])
-        # ax = plt.subplot(2,1,2); ax.set_title("mask_pre"); ax.imshow(mask_pre.cpu().detach().numpy()[0, 0, :, :])
-        # plt.show();
-        # exit(0);
+        # density_map_pre[density_map_pre < 0] = 0
 
         for idx in range(len(categories)):
             count = torch.sum(density_map_pre[:,idx,:,:]).item()
@@ -542,46 +427,62 @@ def validate(data, model, args):
 
 
         if i%25 == 0:
-            print(i)
-            outdir = f"./vision_map/visdrone_class8_epoch_{len(metrics["train_loss"])}";
-            # make dir if not exist
-            if (not os.path.isdir(outdir)):
-                os.mkdir(outdir);
-
-            # imgout_cxy = img.cpu().numpy()[0,:,:,:];
-            # imgout     = np.zeros((imgout_cxy.shape[1], imgout_cxy.shape[2], imgout_cxy.shape[0]));
-            # imgout[:,0,0] = imgout_cxy[0,:,0];
-            # imgout[0,:,0] = imgout_cxy[0,0,:];
-            # imgout[0,0,:] = imgout_cxy[:,0,0];
-            # plt.imshow(imgout); plt.suptitle("Input image"); plt.savefig(os.path.join(outdir, f"{i:03}_input.png"));
-
-            # for cati, cat in enumerate(categories):
-            #     imgout = density_map_pre.cpu().numpy()[0,cati,:,:];
-            #     plt.imshow(imgout); plt.suptitle(f"{cat} output={np.sum(imgout):.3f}"); plt.savefig(os.path.join(outdir, f"{i:03}_{cat}_out_count.png"));
-
-            #     imgout = target.cpu().numpy()[0,cati,:,:];
-            #     plt.imshow(imgout); plt.suptitle(f"{cat} gt={np.sum(imgout):.3f}"); plt.savefig(os.path.join(outdir, f"{i:03}_{cat}_gt_count.png"));
-
-            #     imgout = mask_pre.cpu().numpy()[0,cati,:,:];
-            #     plt.imshow(imgout); plt.suptitle(f"{cat} output={np.sum(imgout):.3f}"); plt.savefig(os.path.join(outdir, f"{i:03}_{cat}_out_mask.png"));
-
-            #     imgout = mask_map.cpu().numpy()[0,cati,:,:];
-            #     plt.imshow(imgout); plt.suptitle(f"{cat} gt={np.sum(imgout):.3f}"); plt.savefig(os.path.join(outdir, f"{i:03}_{cat}_gt_mask.png"));
-
-            # print(density_map_pre.shape)
-            # print(img.shape)
-            # exit(0);
-
-            # logger.report_image(f"{categories[0]}_out_after_mask", f"val_{i}_{fname[0]}", iteration=len(metrics["train_loss"]), image=density_map_pre.data.cpu().numpy()[0, 0, :, :], max_image_history=-1);
-            # logger.report_image(f"input", f"val_{i}_{fname[0]}", iteration=len(metrics["train_loss"]), image=img.data.cpu().numpy()[0, :, :, :], max_image_history=-1);
+            print(f"Outputting samples on validation {i}")
             
-            # TODO: Replaced all the hard-coded directories
-            # source_img = cv2.imread('./dataset/VisDrone/test_data_class8/images/{}'.format(fname[0]))
-            source_img = cv2.imread('./dataset/hicks_vdlike/test_data_class8/images/{}'.format(fname[0]))
-            feature_test(source_img, mask_map.data.cpu().numpy(), target.data.cpu().numpy(), mask_pre.data.cpu().numpy(),
-                         density_map_pre.data.cpu().numpy(),
-                         f'{outdir}/{i}', categories, fname[0],
-                         density_map_pre_orignp)
+            epoch = args.start_epoch + len(metrics["train_loss"]);
+            # outdir = f"./vision_map/visdrone_class8_epoch_{len(metrics["train_loss"])}";
+            # # make dir if not exist
+            # if (not os.path.isdir(outdir)):
+            #     os.mkdir(outdir);
+
+            # Get the input image, change from (C,X,Y) to (X,Y,C)
+            imgout  = img[0,:,:,:].clone().cpu().permute(1, 2, 0).numpy();
+            # Scale between 0-255
+            # And uint8
+            imgout -= np.min(imgout);
+            imgout /= np.max(imgout);
+            imgout *= 255;
+            logger.report_image(title=fname[0], series=f"{i}_INPUT", iteration=epoch, image=imgout);
+            # fname = f"{save_pth}_{cid}_{"GT" if gt else "OUT"}_{"MASK" if mask else "COUNT" }_{categories[cid]}_{img_name}.jpg";
+
+            def normalise_and_cmap_rgb(arr, cmap = cv2.COLORMAP_PLASMA):
+                # Normalize the array to 0-1 range
+                min_val = arr.min();
+                max_val = arr.max();
+                normalised_arr = (arr - min_val) / (max_val - min_val);
+                # Scale to uint8
+                normalised_arr = (normalised_arr * 255).astype(np.uint8);
+                # Apply cmap
+                normalised_arr = cv2.applyColorMap(normalised_arr, cmap);
+                
+                # Convert from opencv BGR to standard RGB
+                return cv2.cvtColor(src=normalised_arr, code=cv2.COLOR_BGR2RGB);
+
+            for cid, cat in enumerate(categories):
+                # Out count before applied mask
+                # logger.report_image(title=fname[0], series=f"{i}_{cid}_OUT_COUNTRAW_{cat}_{fname[0]}", iteration=epoch,
+                #     image=normalise_and_cmap_rgb(density_map_pre_orignp[0,cid,:,:])
+                # );
+                
+                # Out count
+                logger.report_image(title=fname[0], series=f"{i}_{cid}_OUT_COUNT_{cat}_{fname[0]}", iteration=epoch,
+                    image=normalise_and_cmap_rgb(density_map_pre.cpu().numpy()[0,cid,:,:])
+                );
+
+                # GT count
+                logger.report_image(title=fname[0], series=f"{i}_{cid}_GT_COUNT_{cat}_{fname[0]}", iteration=epoch,
+                    image=normalise_and_cmap_rgb(target.cpu().numpy()[0,cid,:,:])
+                );
+
+                # Out mask
+                logger.report_image(title=fname[0], series=f"{i}_{cid}_OUT_MASK_{cat}_{fname[0]}", iteration=epoch,
+                    image=normalise_and_cmap_rgb(mask_pre.cpu().numpy()[0,cid,:,:])
+                );
+
+                # GT mask
+                logger.report_image(title=fname[0], series=f"{i}_{cid}_GT_MASK_{cat}_{fname[0]}", iteration=epoch,
+                    image=normalise_and_cmap_rgb(mask_map.cpu().numpy()[0,cid,:,:])
+                );
 
     mae = mae*1.0 / len(val_loader)
     for idx in range(len(categories)):
