@@ -10,7 +10,7 @@ parser.add_argument('--batch_size', type=int, default=1,
                     help='input batch size for training')
 parser.add_argument('--lr', type=float, default=1e-5 * 1,
                     help='learning rate')
-parser.add_argument('--epochs', type=int, default=200,
+parser.add_argument('--epochs', type=int, default=1200,
                     help='number of epochs to train')
 parser.add_argument('--seed', type=int, default=1,
                     help='random seed')
@@ -22,7 +22,7 @@ parser.add_argument('--lamd', type=float, default=1.0,
                     help='Cross Entropy rate')
 parser.add_argument('--weight_decay', type=float, default=5 * 1e-4,
                     help='weight decay')
-parser.add_argument('--print_freq', type=int, default=50,
+parser.add_argument('--print_freq', type=int, default=10,
                     help='print frequency')
 
 # user

@@ -47,7 +47,7 @@ print(args)
 from clearml import Task
 
 # Track this in clearml and automatically rename it based on the time and date
-task = Task.init(task_name=f"dsaca_hicks_batch_{datetime.datetime.now().replace(microsecond=0).isoformat()}", project_name="flowers")
+task = Task.init(task_name=f"dsaca_strawds_c5_{datetime.datetime.now().replace(microsecond=0).isoformat()}", project_name="flowers")
 
 # get logger object for current task
 logger = task.get_logger()
@@ -55,8 +55,9 @@ logger = task.get_logger()
 logger.set_default_debug_sample_history(2000);
 
 # The mapping between chanel indexes to our dataset
-categories = ['leucanthemum_vulgare', 'raununculus_spp', 'heracleum_sphondylium', 'silene_dioica-latifolia', 'trifolium_repens', 'cirsium_arvense', 'stachys_sylvatica', 'rubus_fruticosus_agg'];
+# categories = ['leucanthemum_vulgare', 'raununculus_spp', 'heracleum_sphondylium', 'silene_dioica-latifolia', 'trifolium_repens', 'cirsium_arvense', 'stachys_sylvatica', 'rubus_fruticosus_agg'];
 # categories = ['people', 'bicycle', 'car', 'van', 'truck', 'tricycle', 'bus', 'motor']
+categories = ["green", "white", "early-turning", "turning", "late-turning", "red"]
 
 
 category_count = len(categories);
@@ -78,11 +79,13 @@ def main():
     setup_seed(0)
 
     # train_file = './npydata/hicks_train_small.npy'
-    train_file = './npydata/hicks_train.npy'
+    # train_file = './npydata/hicks_train.npy'
+    train_file = './npydata/strawds_train.npy'
     # train_file = './npydata/VisDrone_train.npy'
     # train_file = './npydata/VisDrone_train_small.npy'
     # val_file = './npydata/VisDrone_test.npy'
-    val_file = './npydata/hicks_test.npy'
+    # val_file = './npydata/hicks_test.npy'
+    val_file = './npydata/strawds_test.npy'
 
     # Load the lists of file names for validation and training
     with open(train_file, 'rb') as outfile:
@@ -424,7 +427,7 @@ def validate(data, model, args):
             mse[idx] +=abs(torch.sum(target[:,idx,:,:]).item()  - count) * abs(torch.sum(target[:,idx,:,:]).item()  - count)
 
 
-        if i%25 == 0:
+        if i%5 == 0:
             density_map_pre[density_map_pre < 0] = 0;
             density_map_pre_orignp[density_map_pre_orignp < 0] = 0;
 

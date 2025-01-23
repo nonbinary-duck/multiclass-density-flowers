@@ -254,7 +254,7 @@ for pth in img_paths:
 
     spatial_mask = np.array([person, bicycle, car, van, truck, tricycle])#, bus, motor])
 
-    distance = 5
+    distance = 10
     spatial_mask[(spatial_mask >= 0) & (spatial_mask < 1 * distance)] = 0
     spatial_mask[(spatial_mask >= 1 * distance) & (spatial_mask < 2 * distance)] = 1
     spatial_mask[(spatial_mask >= 2 * distance) & (spatial_mask < 3 * distance)] = 2

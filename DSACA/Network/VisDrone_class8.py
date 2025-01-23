@@ -43,8 +43,11 @@ class VGG(nn.Module):
             nn.Conv2d(256, 128, kernel_size=3, padding=1),
             nn.ReLU(inplace=True),
         )
+
+        cats = 6;
+
         self.reg3 = nn.Sequential(
-            nn.Conv2d(128, 8, 1),
+            nn.Conv2d(128, cats, 1),
         )
 
         self.dialited_conv3 = nn.Sequential(
@@ -76,7 +79,7 @@ class VGG(nn.Module):
         self.out2 = nn.Sequential(
             nn.Conv2d(256, 128, 3, padding=1),
             nn.ReLU(inplace=True),
-            nn.Conv2d(128, 8, 1),
+            nn.Conv2d(128, cats, 1),
         )
 
 
