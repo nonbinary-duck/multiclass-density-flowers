@@ -61,24 +61,9 @@ class listDataset_visdrone_class_8(Dataset):
         '''data augmention'''
         if self.train == True:
             if random.random() > 0.5:
-                target_0 = np.fliplr(target[0])
-                target_1 = np.fliplr(target[1])
-                target_2 = np.fliplr(target[2])
-                target_3 = np.fliplr(target[3])
-                target_4 = np.fliplr(target[4])
-                target_5 = np.fliplr(target[5])
-                # target_6 = np.fliplr(target[6])
-                # target_7 = np.fliplr(target[7])
-                mask_map_0 = np.fliplr(mask_map[0])
-                mask_map_1 = np.fliplr(mask_map[1])
-                mask_map_2 = np.fliplr(mask_map[2])
-                mask_map_3 = np.fliplr(mask_map[3])
-                mask_map_4 = np.fliplr(mask_map[4])
-                mask_map_5 = np.fliplr(mask_map[5])
-                # mask_map_6 = np.fliplr(mask_map[6])
-                # mask_map_7 = np.fliplr(mask_map[7])
-                target = np.array([target_0, target_1, target_2, target_3, target_4, target_5])#, target_6, target_7])
-                mask_map = np.array([mask_map_0, mask_map_1, mask_map_2, mask_map_3, mask_map_4, mask_map_5])#, mask_map_6, mask_map_7])
+                target   = np.array([ np.fliplr(c) for c in target ]);
+                mask_map = np.array([ np.fliplr(c) for c in mask_map ]);
+                
                 img = img.transpose(Image.FLIP_LEFT_RIGHT)
                 # kpoint = np.fliplr(kpoint)
 
