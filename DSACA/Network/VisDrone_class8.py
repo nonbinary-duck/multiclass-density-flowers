@@ -44,7 +44,7 @@ class VGG(nn.Module):
             nn.ReLU(inplace=True),
         )
 
-        cats = 6;
+        cats = 25;
 
         self.reg3 = nn.Sequential(
             nn.Conv2d(128, cats, 1),

@@ -101,13 +101,45 @@ def feature_test(feature, save_pth, category):
 ' 类别的顺序需要按照可视化来确定 '
 #“无视区域”，“行人”，“人”，“自行车”，“汽车”，“货车”，“卡车”，“三轮车”，“遮阳篷三轮车”，“公共汽车”，“摩托”，“其他” '
 # VisDrone_category_buf = [ 'ignored-regions', 'pedestrian', 'people', 'bicycle', 'car', 'van', 'truck', 'tricycle', 'awning-tricycle', 'bus', 'motor', 'others']
-hicks_category_buf = ['leucanthemum_vulgare', 'raununculus_spp', 'heracleum_sphondylium', 'silene_dioica-latifolia', 'trifolium_repens', 'cirsium_arvense', 'stachys_sylvatica', 'rubus_fruticosus_agg']
-kernel_size_buf = [4, 8, 8, 8, 6, 6, 8, 8]
-color_buf = [(0, 0, 255), (0, 255, 0), (255, 0, 0),
-             (0, 125, 125), (125, 0, 125), (125, 125, 0),
-             (0, 25, 25), (25, 0, 25), (25, 25, 0),
-             (0, 255, 255), (255, 0, 255), (255, 255, 0),]
+# hicks_category_buf = ['leucanthemum_vulgare', 'raununculus_spp', 'heracleum_sphondylium', 'silene_dioica-latifolia', 'trifolium_repens', 'cirsium_arvense', 'stachys_sylvatica', 'rubus_fruticosus_agg']
 
+
+hicks_category = {
+    'leucanthemum_vulgare': 10,
+    'raununculus_spp': 5,
+    'heracleum_sphondylium': 5,
+    'silene_dioica-latifolia': 5,
+    'trifolium_repens': 5,
+    'cirsium_arvense': 7,
+    'stachys_sylvatica': 6,
+    'rubus_fruticosus_agg': 6,
+    'vicia_cracca': 7,
+    'yellow_composite': 6,
+    'angelica_sylvestris': 5,
+    'achillea_millefolium': 5,
+    'senecio_jacobaea': 5,
+    'prunella_vulgaris': 5,
+    'trifolium_pratense': 5,
+    'lotus_spp': 5,
+    'centaurea_nigra': 6,
+    'vicia_sepium-sativa': 5,
+    'bellis_perennis': 5,
+    'symphytum_officinale': 5,
+    'knautia_arvensis': 5,
+    'rhinanthus_minor': 4,
+    'cirsium_vulgare': 8,
+    'lathyrus_pratensis': 5,
+    'taraxacum_agg': 8
+};
+
+hicks_category_buf = list(hicks_category.keys());
+
+# Kernel size for each category
+# kernel_size_buf = [8, 4, 5, 5, 6, 6, 8, 8]
+kernel_size_mult = 1.0;
+kernel_size_buf = [float(hicks_category[k]) * kernel_size_mult for k in hicks_category.keys()];
+
+# assert(len(kernel_size_buf) == len(hicks_category_buf));
 
 path_sets = [test_label_pth, train_label_pth]
 img_paths=[]
@@ -195,37 +227,37 @@ for pth in img_paths:
     feature_test(density_map, target_pth.replace('images', 'gt_show').replace('.jpg', ''), hicks_category_buf)
     cv2.imwrite(os.path.join(target_pth.replace('images', 'gt_show').replace('.jpg', ''), os.path.basename(target_pth)) , np.multiply(img, mask[:,:,None]))
 
-    # plt.figure(figsize=(16,9), dpi=300);
-    # plt.imshow(img*mask[:,:,None]);
-    # plt.savefig(target_pth, bbox_inches='tight', pad_inches = 0.5, dpi=300);
-
-    
-
     '''
     “无视区域”，“行人”，“人”，“自行车”，“汽车”，“货车”，“卡车”，“三轮车”，“遮阳篷三轮车”，“公共汽车”，“摩托”，“其他” '
     VisDrone_category_buf = [ 'ignored-regions', 'pedestrian', 'people', 'bicycle', 'car', 'van', 'truck', 'tricycle', 'awning-tricycle', 'bus', 'motor', 'others']
     '''
 
-    # print(np.min(kpoint[0,:,:]), np.max(kpoint[0,:,:]), np.mean(kpoint[0,:,:]), np.sum(kpoint[0,:,:]))
+    # distance_map = (255 * (1 - kpoint[0, :, :].copy())).astype(np.uint8)
+    # person=cv2.distanceTransform(distance_map, cv2.DIST_L2, 5)
+    # distance_map = (255 * (1 - kpoint[1, :, :].copy())).astype(np.uint8)
+    # bicycle=cv2.distanceTransform(distance_map, cv2.DIST_L2, 5)
+    # distance_map = (255 * (1 - kpoint[2, :, :].copy())).astype(np.uint8)
+    # car=cv2.distanceTransform(distance_map, cv2.DIST_L2, 5)
+    # distance_map = (255 * (1 - kpoint[3, :, :].copy())).astype(np.uint8)
+    # van=cv2.distanceTransform(distance_map, cv2.DIST_L2, 5)
+    # distance_map = (255 * (1 - kpoint[4, :, :].copy())).astype(np.uint8)
+    # truck=cv2.distanceTransform(distance_map, cv2.DIST_L2, 5)
+    # distance_map = (255 * (1 - kpoint[5, :, :].copy())).astype(np.uint8)
+    # tricycle=cv2.distanceTransform(distance_map, cv2.DIST_L2, 5)
+    # distance_map = (255 * (1 - kpoint[6, :, :].copy())).astype(np.uint8)
+    # bus=cv2.distanceTransform(distance_map, cv2.DIST_L2, 5)
+    # distance_map = (255 * (1 - kpoint[7, :, :].copy())).astype(np.uint8)
+    # motor=cv2.distanceTransform(distance_map, cv2.DIST_L2, 5)
 
-    distance_map = (255 * (1-kpoint[0,:,:].copy())).astype(np.uint8)
-    person=cv2.distanceTransform(distance_map, cv2.DIST_L2, 5)
-    distance_map = (255 * (1 - kpoint[1, :, :].copy())).astype(np.uint8)
-    bicycle=cv2.distanceTransform(distance_map, cv2.DIST_L2, 5)
-    distance_map = (255 * (1 - kpoint[2, :, :].copy())).astype(np.uint8)
-    car=cv2.distanceTransform(distance_map, cv2.DIST_L2, 5)
-    distance_map = (255 * (1 - kpoint[3, :, :].copy())).astype(np.uint8)
-    van=cv2.distanceTransform(distance_map, cv2.DIST_L2, 5)
-    distance_map = (255 * (1 - kpoint[4, :, :].copy())).astype(np.uint8)
-    truck=cv2.distanceTransform(distance_map, cv2.DIST_L2, 5)
-    distance_map = (255 * (1 - kpoint[5, :, :].copy())).astype(np.uint8)
-    tricycle=cv2.distanceTransform(distance_map, cv2.DIST_L2, 5)
-    distance_map = (255 * (1 - kpoint[6, :, :].copy())).astype(np.uint8)
-    bus=cv2.distanceTransform(distance_map, cv2.DIST_L2, 5)
-    distance_map = (255 * (1 - kpoint[7, :, :].copy())).astype(np.uint8)
-    motor=cv2.distanceTransform(distance_map, cv2.DIST_L2, 5)
+    distance_maps = [ 
+        cv2.distanceTransform(
+            (255 * (1 - kpoint[c_index, :, :].copy())).astype(np.uint8)
+            , cv2.DIST_L2, 5)
+        for c_index in range(len(hicks_category_buf))
+     ]
 
-    spatial_mask = np.array([person, bicycle, car, van, truck, tricycle, bus, motor])
+    # spatial_mask = np.array([person, bicycle, car, van, truck, tricycle, bus, motor])
+    spatial_mask = np.array(distance_maps)
 
     distance = 5
     spatial_mask[(spatial_mask >= 0) & (spatial_mask < 1 * distance)] = 0
