@@ -29,8 +29,10 @@ def load_data_visdrone_class_8(img_path,train = True):
             # print('该循环程序运行时间7：', run_time_7)
 
             # mask_map = np.asarray(gt_file['mask'][()])
-            target = np.asarray(gt_file['density_map'][()][0:8,:,:])
-            mask = np.asarray(gt_file['mask'][()][0:8,:,:])
+            target = np.asarray(gt_file['density_map'][()][:,:,:])
+            mask = np.asarray(gt_file['mask'][()][:,:,:])
+            # target = np.asarray(gt_file['density_map'][()][0:8,:,:])
+            # mask = np.asarray(gt_file['mask'][()][0:8,:,:])
             # k = np.asarray(gt_file['kpoint'][()])
             
             break

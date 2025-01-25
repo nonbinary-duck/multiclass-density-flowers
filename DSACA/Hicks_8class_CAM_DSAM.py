@@ -187,9 +187,15 @@ def main():
         end_val = time.time();
         print(f"val time {end_val - end_train}");
 
-    print("=============");
-    print("= Finished! =");
-    print("=============");
+
+    print(" ____________________ ") # Made using cowsay
+    print("< Finished training! >") # echo "Finished training!" | cowsay -f duck
+    print(" -------------------- ")
+    print(" \\                   ")
+    print("  \\                  ")
+    print("   \\ >()_            ")
+    print("      (__)__ _        ")
+
 
 def train(data, model, criterion, optimizer, epoch, args, scheduler):
     """

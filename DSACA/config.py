@@ -22,7 +22,7 @@ parser.add_argument('--lamd', type=float, default=1.0,
                     help='Cross Entropy rate')
 parser.add_argument('--weight_decay', type=float, default=5 * 1e-4,
                     help='weight decay')
-parser.add_argument('--print_freq', type=int, default=10,
+parser.add_argument('--print_freq', type=int, default=25,
                     help='print frequency')
 
 # user
