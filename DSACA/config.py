@@ -8,7 +8,7 @@ parser.add_argument('--start_epoch', type=int, default=0,
                     help='start epoch for training')
 parser.add_argument('--batch_size', type=int, default=1,
                     help='input batch size for training')
-parser.add_argument('--lr', type=float, default=1e-5 * 1,
+parser.add_argument('--lr', type=float, default=1e-4 * 1, # DSACA is 10^-5
                     help='learning rate')
 parser.add_argument('--epochs', type=int, default=1200,
                     help='number of epochs to train')
@@ -29,7 +29,7 @@ parser.add_argument('--print_freq', type=int, default=10,
 ###################################################################################
 parser.add_argument('--train_dataset', type=str, default='VisDrone',
                     help='choice train dataset')
-parser.add_argument('--pre', type=str,#, default='./save_file_model/VisDrone_class8/batch.pth',
+parser.add_argument('--pre', type=str, default='./save_file_model/VisDrone_class8/checkpoint.pth',
                     help='pre-trained model directory')
 parser.add_argument('--task_id', type=str, default='./save_file_model/VisDrone_class8',
                     help='save checkpoint directory')
