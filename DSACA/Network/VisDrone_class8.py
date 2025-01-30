@@ -21,7 +21,7 @@ class VGG(nn.Module):
     def __init__(self, load_weights=False):
         super(VGG, self).__init__()
 
-        cats = 25;
+        cats = 4;
 
         self.seen = 0
         self.cfg = {
