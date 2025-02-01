@@ -18,7 +18,7 @@ parser.add_argument('--best_pred', type=int, default=1e5,
                     help='best pred')
 parser.add_argument('--lr_step', type=list, default=[70,90],
                     help='drop learning rate by 10')
-parser.add_argument('--lamd', type=float, default=2.0,
+parser.add_argument('--lamd', type=float, default=10.0,
                     help='Cross Entropy rate (importance CE loss vs mae loss)')
 parser.add_argument('--weight_decay', type=float, default=5 * 1e-4,
                     help='weight decay')
