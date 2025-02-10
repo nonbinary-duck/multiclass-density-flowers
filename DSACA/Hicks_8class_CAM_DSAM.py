@@ -27,6 +27,7 @@ import pandas as pd
 
 import datetime
 import pynvml
+import shutil
 
 
 pynvml.nvmlInit();
@@ -47,7 +48,7 @@ print(args)
 from clearml import Task
 
 # Track this in clearml and automatically rename it based on the time and date
-task = Task.init(task_name=f"dsaca_hicks_c25_{datetime.datetime.now().replace(microsecond=0).isoformat()}", project_name="flowers")
+task = Task.init(task_name=f"dsaca_hicks_c25_noseg_{datetime.datetime.now().replace(microsecond=0).isoformat()}", project_name="flowers")
 
 # get logger object for current task
 logger = task.get_logger()
@@ -182,9 +183,16 @@ def main():
             'optimizer': optimizer.state_dict(),
         }, visi, is_best, args.task_id);
 
+        # Save checkpoint every other epoch
+        if ((epoch+1) % 2 == 0):
+            new_chkpnt_path = os.path.join(args.task_id, f"checkpoint_epoch_{epoch+1}_temp.pth");
+            shutil.copy(os.path.join(args.task_id, "checkpoint.pth"), new_chkpnt_path);
+            task.update_output_model(model_path=os.path.join(args.task_id, "model_best.pth"), name="checkpoint", comment=f"Cats {categories}", iteration=epoch+1);
+            
+
         # Record model outputs
         if (is_best):
-            task.update_output_model(model_path=os.path.join(args.task_id, "model_best.pth"), comment=f"Cats {categories}");
+            task.update_output_model(model_path=os.path.join(args.task_id, "model_best.pth"), name="model_best", comment=f"Cats {categories}", iteration=epoch+1);
             task.set_user_properties(best_model_epoch=epoch+1);
 
         end_val = time.time();
@@ -294,7 +302,8 @@ def train(data, model, criterion, optimizer, epoch, args, scheduler):
 
         # For each category, grab the two masks related to it
         # This probably keeps the tensors on the same device (on the GPU)
-        mask_preds = [mask_out[:, i*2:(i+1)*2, :, :] for i in range(category_count)];
+        # Ignore masks
+        # mask_preds = [mask_out[:, i*2:(i+1)*2, :, :] for i in range(category_count)];
         # Also slice the GT for each category
         mask_gts   = [mask_map[:, i, :, :] for i in range(category_count)];
 
@@ -305,21 +314,21 @@ def train(data, model, criterion, optimizer, epoch, args, scheduler):
         # Cross entropy rate
         lamda = args.lamd;
 
-        total_loss_ce = 0
+        # total_loss_ce = 0
 
-        # Then compute the cross-entropy loss of the masks
-        for ci in range(category_count):
-            # Why do we convert mask gts to long but not the floating point model output?!
-            ci_loss_ce = lamda * criterion[1](mask_preds[ci], mask_gts[ci].long());
-            loss += ci_loss_ce;
-            total_loss_ce += ci_loss_ce;
+        # # Then compute the cross-entropy loss of the masks
+        # for ci in range(category_count):
+        #     # Why do we convert mask gts to long but not the floating point model output?!
+        #     ci_loss_ce = lamda * criterion[1](mask_preds[ci], mask_gts[ci].long());
+        #     loss += ci_loss_ce;
+        #     total_loss_ce += ci_loss_ce;
 
         # print('mse_loss=',criterion[0](density_map_pre, target).item())
 
         # Update the losses average for this epoch
         losses.update(loss.item(), img.size(0));
         losses_mae.update(loss_mae.item(), img.size(0));
-        losses_ce.update(total_loss_ce.item(), img.size(0));
+        # losses_ce.update(total_loss_ce.item(), img.size(0));
         # Zer the gradients of the optimiser for the backward pass
         optimizer.zero_grad();
         # Propagate the loss back through the model
@@ -340,8 +349,8 @@ def train(data, model, criterion, optimizer, epoch, args, scheduler):
             logger.report_scalar(title="Mid-Epoch Loss", series="losses.val", iteration=subiter, value=losses.val);
             logger.report_scalar(title="Mid-Epoch Loss Avg", series="losses_mae.avg", iteration=subiter, value=losses_mae.avg);
             logger.report_scalar(title="Mid-Epoch Loss", series="losses_mae.val", iteration=subiter, value=losses_mae.val);
-            logger.report_scalar(title="Mid-Epoch Loss Avg", series="losses_ce.avg", iteration=subiter, value=losses_ce.avg);
-            logger.report_scalar(title="Mid-Epoch Loss", series="losses_ce.val", iteration=subiter, value=losses_ce.val);
+            # logger.report_scalar(title="Mid-Epoch Loss Avg", series="losses_ce.avg", iteration=subiter, value=losses_ce.avg);
+            # logger.report_scalar(title="Mid-Epoch Loss", series="losses_ce.val", iteration=subiter, value=losses_ce.val);
 
             total_gpus_power = 0.0;
             for gpui, gpuh in enumerate(gpu_handles):
@@ -424,7 +433,7 @@ def validate(data, model, args):
 
         # Pass the image forward to the model, not updating weights
         with torch.no_grad():
-            density_map_pre,_, mask_pre = model(img, target);
+            density_map_pre,density_map_pre_2, mask_pre = model(img, target);
 
         masks = [];
         for ic, cat in enumerate(categories):
@@ -441,8 +450,9 @@ def validate(data, model, args):
         mask_pre = torch.cat( masks, dim=0 );
         mask_pre = torch.unsqueeze(mask_pre, dim=0);
 
-        density_map_pre_orignp = density_map_pre.detach().clone();
-        density_map_pre = torch.mul(density_map_pre, mask_pre);
+        density_map_pre2_orignp = density_map_pre_2#.detach().clone();
+        # Don't use masking
+        # density_map_pre = torch.mul(density_map_pre, mask_pre);
 
 
         for idx in range(len(categories)):
@@ -453,7 +463,7 @@ def validate(data, model, args):
 
         if i%20 == 0:
             density_map_pre[density_map_pre < 0] = 0;
-            density_map_pre_orignp[density_map_pre_orignp < 0] = 0;
+            density_map_pre2_orignp[density_map_pre2_orignp < 0] = 0;
 
             print(f"Outputting samples on validation {i}")
             
@@ -492,8 +502,8 @@ def validate(data, model, args):
 
             for cid, cat in enumerate(categories):
                 # Out count before applied mask
-                logger.report_image(title=fname[0], series=f"{cid:02d}_OUT_COUNTRAW_{cat}_{fname[0]}", iteration=epoch,
-                    image=normalise_and_cmap_rgb(density_map_pre_orignp.cpu().numpy(), cid)
+                logger.report_image(title=fname[0], series=f"{cid:02d}_OUT_COUNTRAW2_{cat}_{fname[0]}", iteration=epoch,
+                    image=normalise_and_cmap_rgb(density_map_pre2_orignp.cpu().numpy(), cid)
                 );
                 
                 # Out count
@@ -506,15 +516,17 @@ def validate(data, model, args):
                     image=normalise_and_cmap_rgb(target.cpu().numpy(), cid)
                 );
 
-                # Out mask
-                logger.report_image(title=fname[0], series=f"{cid:02d}_OUT_MASK_{cat}_{fname[0]}", iteration=epoch,
-                    image=normalise_and_cmap_rgb(mask_pre.cpu().numpy(), cid)
-                );
+                # Ignore mask
+                # # Out mask
+                # logger.report_image(title=fname[0], series=f"{cid:02d}_OUT_MASK_{cat}_{fname[0]}", iteration=epoch,
+                #     image=normalise_and_cmap_rgb(mask_pre.cpu().numpy(), cid)
+                # );
 
-                # GT mask
-                logger.report_image(title=fname[0], series=f"{cid:02d}_GT_MASK_{cat}_{fname[0]}", iteration=epoch,
-                    image=normalise_and_cmap_rgb(mask_map.cpu().numpy(), cid)
-                );
+                # Ignore mask
+                # # GT mask
+                # logger.report_image(title=fname[0], series=f"{cid:02d}_GT_MASK_{cat}_{fname[0]}", iteration=epoch,
+                #     image=normalise_and_cmap_rgb(mask_map.cpu().numpy(), cid)
+                # );
 
     mae = mae*1.0 / len(val_loader)
     for idx in range(len(categories)):
