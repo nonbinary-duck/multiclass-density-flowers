@@ -16,7 +16,7 @@ def __loader_init__(_index_mapping = None):
     if _index_mapping != None:
         INDEX_MAPPING = _index_mapping
 
-def apply_mapping(gt_file) -> (target, mask):
+def apply_mapping(gt_file):
     if (INDEX_MAPPING == None):
         # (target, mask)
         return (

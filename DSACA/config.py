@@ -10,7 +10,7 @@ parser.add_argument('--batch_size', type=int, default=1,
                     help='input batch size for training')
 parser.add_argument('--lr', type=float, default=1e-5 * 1, # DSACA is 10^-5
                     help='learning rate')
-parser.add_argument('--epochs', type=int, default=300,
+parser.add_argument('--epochs', type=int, default=200,
                     help='number of epochs to train')
 parser.add_argument('--seed', type=int, default=1,
                     help='random seed')

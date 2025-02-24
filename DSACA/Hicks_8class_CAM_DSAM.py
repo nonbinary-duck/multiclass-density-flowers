@@ -23,6 +23,7 @@ import scipy.ndimage
 import cv2
 
 import pandas as pd
+import numpy as np
 
 import datetime
 import pynvml
@@ -47,7 +48,7 @@ print(args)
 from clearml import Task
 
 # Track this in clearml and automatically rename it based on the time and date
-task = Task.init(task_name=f"dsaca_hicks_c25_noseg_{datetime.datetime.now().replace(microsecond=0).isoformat()}", project_name="flowers")
+task = Task.init(task_name=f"dsaca_hicks_cselect_{datetime.datetime.now().replace(microsecond=0).isoformat()}", project_name="flowers")
 
 # get logger object for current task
 logger = task.get_logger()
