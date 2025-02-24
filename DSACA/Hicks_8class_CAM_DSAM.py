@@ -210,9 +210,9 @@ def main():
 
         # Save checkpoint every other epoch
         if ((epoch+1) % 2 == 0):
-            new_chkpnt_path = os.path.join(args.task_id, f"checkpoint_epoch_{epoch+1}_temp.pth");
-            shutil.copy(os.path.join(args.task_id, "checkpoint.pth"), new_chkpnt_path);
-            task.update_output_model(model_path=new_chkpnt_path, name="checkpoint", comment=f"Cats {categories}", iteration=epoch+1);
+            # new_chkpnt_path = os.path.join(args.task_id, f"checkpoint_epoch_{epoch+1}_temp.pth");
+            # shutil.copy(os.path.join(args.task_id, "checkpoint.pth"), new_chkpnt_path);
+            task.update_output_model(model_path=os.path.join(args.task_id, f"checkpoint.pth"), name="checkpoint", comment=f"Cats {categories}", iteration=epoch+1, auto_delete_file=False)
             
 
         # Record model outputs
