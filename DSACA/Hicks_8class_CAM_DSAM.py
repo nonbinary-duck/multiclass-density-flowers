@@ -48,7 +48,7 @@ print(args)
 from clearml import Task
 
 # Track this in clearml and automatically rename it based on the time and date
-task = Task.init(task_name=f"dsaca_hicks_cselect_{datetime.datetime.now().replace(microsecond=0).isoformat()}", project_name="flowers")
+task = Task.init(task_name=f"dsaca_hicks_weighted_loss_{datetime.datetime.now().replace(microsecond=0).isoformat()}", project_name="flowers")
 
 # get logger object for current task
 logger = task.get_logger()
@@ -77,6 +77,7 @@ dataset.__init_loader__(category_mapping);
 category_importance = [1.0 for c in categories]
 
 category_count = len(categories);
+
 
 for arg, val in args._get_kwargs():
     task.set_parameter(f"args.{arg}", val);
@@ -112,7 +113,7 @@ def main():
         val_list = np.load(outfile).tolist()
 
     # Initalise the model
-    model = VGG()
+    model = VGG(cats=category_count)
     # Send it to the GPU
     model = nn.DataParallel(model, device_ids=[0])
     model = model.cuda()

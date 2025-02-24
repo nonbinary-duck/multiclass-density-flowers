@@ -18,10 +18,8 @@ def crop(d, g):
 
 
 class VGG(nn.Module):
-    def __init__(self, load_weights=False):
+    def __init__(self, cats: int, load_weights=False):
         super(VGG, self).__init__()
-
-        cats = 25;
 
         self.seen = 0
         self.cfg = {

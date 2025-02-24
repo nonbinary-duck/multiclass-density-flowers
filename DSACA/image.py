@@ -4,20 +4,25 @@ import torch
 import numpy as np
 from PIL import Image
 import cv2
-
+import sys
 
 import matplotlib.pyplot as plt
 
+# This is from https://stackoverflow.com/a/35904211
+module = sys.modules[__name__]
 # [0,1,2,3,4,5...n] would acheive 1:1
 # [8,3,1] is more what you should use it for
-INDEX_MAPPING = None;
+module.INDEX_MAPPING = None;
 
 def __loader_init__(_index_mapping = None):
     if _index_mapping != None:
-        INDEX_MAPPING = _index_mapping
+        module.INDEX_MAPPING = _index_mapping
+
+    # print(f"Set INDEX_MAPPING to {module.INDEX_MAPPING} {_index_mapping}")
 
 def apply_mapping(gt_file):
-    if (INDEX_MAPPING == None):
+    
+    if (module.INDEX_MAPPING == None):
         # (target, mask)
         return (
             np.asarray(gt_file['density_map'][:,:,:]),
@@ -26,10 +31,10 @@ def apply_mapping(gt_file):
     else:
         den_shape  = gt_file['density_map'].shape
         mask_shape = gt_file['mask'].shape
-        target     = np.zeroes((len(INDEX_MAPPING), den_shape[1],  den_shape[2] ))
-        mask       = np.zeroes((len(INDEX_MAPPING), mask_shape[1], mask_shape[2]))
+        target     = np.zeros((len(module.INDEX_MAPPING), den_shape[1],  den_shape[2] ), dtype=gt_file['density_map'].dtype)
+        mask       = np.zeros((len(module.INDEX_MAPPING), mask_shape[1], mask_shape[2]), dtype=gt_file['mask'].dtype)
 
-        for i, mapping in enumerate(INDEX_MAPPING):
+        for i, mapping in enumerate(module.INDEX_MAPPING):
             target[i,:,:] = gt_file['density_map'][mapping,:,:]
             mask[i,:,:]   =        gt_file['mask'][mapping,:,:]
         
