@@ -48,7 +48,7 @@ print(args)
 from clearml import Task
 
 # Track this in clearml and automatically rename it based on the time and date
-task = Task.init(task_name=f"dsaca_hicks_weighted_loss_{datetime.datetime.now().replace(microsecond=0).isoformat()}", project_name="flowers")
+task = Task.init(task_name=f"dsaca_hicks_catselect_{datetime.datetime.now().replace(microsecond=0).isoformat()}", project_name="flowers")
 
 # get logger object for current task
 logger = task.get_logger()
@@ -62,7 +62,7 @@ logger.set_default_debug_sample_history(2000);
 categories = ['leucanthemum_vulgare', 'raununculus_spp', 'heracleum_sphondylium', 'silene_dioica-latifolia', 'trifolium_repens', 'cirsium_arvense', 'stachys_sylvatica', 'rubus_fruticosus_agg', 'vicia_cracca', 'yellow_composite', 'angelica_sylvestris', 'achillea_millefolium', 'senecio_jacobaea', 'prunella_vulgaris', 'trifolium_pratense', 'lotus_spp', 'centaurea_nigra', 'vicia_sepium-sativa', 'bellis_perennis', 'symphytum_officinale', 'knautia_arvensis', 'rhinanthus_minor', 'cirsium_vulgare', 'lathyrus_pratensis', 'taraxacum_agg']
 # categories = ["r_strawberry", "u_strawberry", "r_tomato", "u_tomato"]
 
-use_catselec = False
+use_catselec = True
 
 if (use_catselec):
     selected_categories = ["symphytum_officinale", "leucanthemum_vulgare", "lotus_spp", "knautia_arvensis", "trifolium_repens", "trifolium_pratense", "cirsium_arvense", "taraxacum_agg", "heracleum_sphondylium", "rubus_fruticosus_agg", "yellow_composite", "cirsium_vulgare", "raununculus_spp", "senecio_jacobaea", "lathyrus_pratensis"]
