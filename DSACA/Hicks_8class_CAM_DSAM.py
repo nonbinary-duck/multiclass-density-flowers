@@ -11,7 +11,6 @@ import torch.nn.functional as F
 from torchvision import datasets, transforms
 import dataset
 import math
-from image import *
 
 warnings.filterwarnings('ignore')
 from config import args
@@ -62,6 +61,19 @@ logger.set_default_debug_sample_history(2000);
 categories = ['leucanthemum_vulgare', 'raununculus_spp', 'heracleum_sphondylium', 'silene_dioica-latifolia', 'trifolium_repens', 'cirsium_arvense', 'stachys_sylvatica', 'rubus_fruticosus_agg', 'vicia_cracca', 'yellow_composite', 'angelica_sylvestris', 'achillea_millefolium', 'senecio_jacobaea', 'prunella_vulgaris', 'trifolium_pratense', 'lotus_spp', 'centaurea_nigra', 'vicia_sepium-sativa', 'bellis_perennis', 'symphytum_officinale', 'knautia_arvensis', 'rhinanthus_minor', 'cirsium_vulgare', 'lathyrus_pratensis', 'taraxacum_agg']
 # categories = ["r_strawberry", "u_strawberry", "r_tomato", "u_tomato"]
 
+selected_categories = ["symphytum_officinale", "leucanthemum_vulgare", "lotus_spp", "knautia_arvensis", "trifolium_repens", "trifolium_pratense", "cirsium_arvense", "taraxacum_agg", "heracleum_sphondylium", "rubus_fruticosus_agg", "yellow_composite", "cirsium_vulgare", "raununculus_spp", "senecio_jacobaea", "lathyrus_pratensis"]
+
+# Figure out the mapping, this SHOULD create an error if it's not found
+category_mapping    = [ categories.index(sc) for sc in selected_categories ]
+
+# Completely replace the original categories
+categories = selected_categories
+# Tell the data loader
+dataset.__init_loader__(category_mapping);
+
+# Importance multiplies the loss for that category
+# category_importance = [1.0, 1.2953929539295392, 1.4722792607802877, 1.7880299251870324, 1.9031187790311879, 1.9616963064295483, 2.3741721854304636, 2.547069271758437, 2.6144029170464904, 2.760346487006737, 2.817288801571709, 2.817288801571709, 2.902834008097166, 3.0031413612565445, 3.1412924424972615, 3.414285714285714, 3.829105473965287, 3.880920162381597, 3.9233926128590966, 4.365296803652968, 4.709359605911331, 4.764119601328903, 5.112299465240642, 7.391752577319589, 14.412060301507537]
+category_importance = [1.0 for c in categories]
 
 category_count = len(categories);
 
