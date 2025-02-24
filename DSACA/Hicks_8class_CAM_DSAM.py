@@ -187,7 +187,7 @@ def main():
         if ((epoch+1) % 2 == 0):
             new_chkpnt_path = os.path.join(args.task_id, f"checkpoint_epoch_{epoch+1}_temp.pth");
             shutil.copy(os.path.join(args.task_id, "checkpoint.pth"), new_chkpnt_path);
-            task.update_output_model(model_path=os.path.join(args.task_id, "model_best.pth"), name="checkpoint", comment=f"Cats {categories}", iteration=epoch+1);
+            task.update_output_model(model_path=new_chkpnt_path, name="checkpoint", comment=f"Cats {categories}", iteration=epoch+1);
             
 
         # Record model outputs
@@ -302,8 +302,8 @@ def train(data, model, criterion, optimizer, epoch, args, scheduler):
 
         # For each category, grab the two masks related to it
         # This probably keeps the tensors on the same device (on the GPU)
-        # Ignore masks
-        # mask_preds = [mask_out[:, i*2:(i+1)*2, :, :] for i in range(category_count)];
+
+        mask_preds = [mask_out[:, i*2:(i+1)*2, :, :] for i in range(category_count)];
         # Also slice the GT for each category
         mask_gts   = [mask_map[:, i, :, :] for i in range(category_count)];
 
@@ -314,21 +314,21 @@ def train(data, model, criterion, optimizer, epoch, args, scheduler):
         # Cross entropy rate
         lamda = args.lamd;
 
-        # total_loss_ce = 0
+        total_loss_ce = 0
 
-        # # Then compute the cross-entropy loss of the masks
-        # for ci in range(category_count):
-        #     # Why do we convert mask gts to long but not the floating point model output?!
-        #     ci_loss_ce = lamda * criterion[1](mask_preds[ci], mask_gts[ci].long());
-        #     loss += ci_loss_ce;
-        #     total_loss_ce += ci_loss_ce;
+        # Then compute the cross-entropy loss of the masks
+        for ci in range(category_count):
+            # Why do we convert mask gts to long but not the floating point model output?!
+            ci_loss_ce = lamda * criterion[1](mask_preds[ci], mask_gts[ci].long());
+            loss += ci_loss_ce;
+            total_loss_ce += ci_loss_ce;
 
         # print('mse_loss=',criterion[0](density_map_pre, target).item())
 
         # Update the losses average for this epoch
         losses.update(loss.item(), img.size(0));
         losses_mae.update(loss_mae.item(), img.size(0));
-        # losses_ce.update(total_loss_ce.item(), img.size(0));
+        losses_ce.update(total_loss_ce.item(), img.size(0));
         # Zer the gradients of the optimiser for the backward pass
         optimizer.zero_grad();
         # Propagate the loss back through the model
@@ -349,8 +349,8 @@ def train(data, model, criterion, optimizer, epoch, args, scheduler):
             logger.report_scalar(title="Mid-Epoch Loss", series="losses.val", iteration=subiter, value=losses.val);
             logger.report_scalar(title="Mid-Epoch Loss Avg", series="losses_mae.avg", iteration=subiter, value=losses_mae.avg);
             logger.report_scalar(title="Mid-Epoch Loss", series="losses_mae.val", iteration=subiter, value=losses_mae.val);
-            # logger.report_scalar(title="Mid-Epoch Loss Avg", series="losses_ce.avg", iteration=subiter, value=losses_ce.avg);
-            # logger.report_scalar(title="Mid-Epoch Loss", series="losses_ce.val", iteration=subiter, value=losses_ce.val);
+            logger.report_scalar(title="Mid-Epoch Loss Avg", series="losses_ce.avg", iteration=subiter, value=losses_ce.avg);
+            logger.report_scalar(title="Mid-Epoch Loss", series="losses_ce.val", iteration=subiter, value=losses_ce.val);
 
             total_gpus_power = 0.0;
             for gpui, gpuh in enumerate(gpu_handles):
@@ -451,8 +451,8 @@ def validate(data, model, args):
         mask_pre = torch.unsqueeze(mask_pre, dim=0);
 
         density_map_pre2_orignp = density_map_pre_2#.detach().clone();
-        # Don't use masking
-        # density_map_pre = torch.mul(density_map_pre, mask_pre);
+
+        density_map_pre = torch.mul(density_map_pre, mask_pre);
 
 
         for idx in range(len(categories)):
@@ -516,17 +516,15 @@ def validate(data, model, args):
                     image=normalise_and_cmap_rgb(target.cpu().numpy(), cid)
                 );
 
-                # Ignore mask
-                # # Out mask
-                # logger.report_image(title=fname[0], series=f"{cid:02d}_OUT_MASK_{cat}_{fname[0]}", iteration=epoch,
-                #     image=normalise_and_cmap_rgb(mask_pre.cpu().numpy(), cid)
-                # );
+                # Out mask
+                logger.report_image(title=fname[0], series=f"{cid:02d}_OUT_MASK_{cat}_{fname[0]}", iteration=epoch,
+                    image=normalise_and_cmap_rgb(mask_pre.cpu().numpy(), cid)
+                );
 
-                # Ignore mask
-                # # GT mask
-                # logger.report_image(title=fname[0], series=f"{cid:02d}_GT_MASK_{cat}_{fname[0]}", iteration=epoch,
-                #     image=normalise_and_cmap_rgb(mask_map.cpu().numpy(), cid)
-                # );
+                # GT mask
+                logger.report_image(title=fname[0], series=f"{cid:02d}_GT_MASK_{cat}_{fname[0]}", iteration=epoch,
+                    image=normalise_and_cmap_rgb(mask_map.cpu().numpy(), cid)
+                );
 
     mae = mae*1.0 / len(val_loader)
     for idx in range(len(categories)):
