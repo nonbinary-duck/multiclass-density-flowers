@@ -48,7 +48,7 @@ print(args)
 from clearml import Task
 
 # Track this in clearml and automatically rename it based on the time and date
-task = Task.init(task_name=f"dsaca_hicks_weighted_loss_{datetime.datetime.now().replace(microsecond=0).isoformat()}", project_name="flowers")
+task = Task.init(task_name=f"dsaca_hicks_catselect_{datetime.datetime.now().replace(microsecond=0).isoformat()}", project_name="flowers")
 
 # get logger object for current task
 logger = task.get_logger()
@@ -62,22 +62,33 @@ logger.set_default_debug_sample_history(2000);
 categories = ['leucanthemum_vulgare', 'raununculus_spp', 'heracleum_sphondylium', 'silene_dioica-latifolia', 'trifolium_repens', 'cirsium_arvense', 'stachys_sylvatica', 'rubus_fruticosus_agg', 'vicia_cracca', 'yellow_composite', 'angelica_sylvestris', 'achillea_millefolium', 'senecio_jacobaea', 'prunella_vulgaris', 'trifolium_pratense', 'lotus_spp', 'centaurea_nigra', 'vicia_sepium-sativa', 'bellis_perennis', 'symphytum_officinale', 'knautia_arvensis', 'rhinanthus_minor', 'cirsium_vulgare', 'lathyrus_pratensis', 'taraxacum_agg']
 # categories = ["r_strawberry", "u_strawberry", "r_tomato", "u_tomato"]
 
-selected_categories = ["symphytum_officinale", "leucanthemum_vulgare", "lotus_spp", "knautia_arvensis", "trifolium_repens", "trifolium_pratense", "cirsium_arvense", "taraxacum_agg", "heracleum_sphondylium", "rubus_fruticosus_agg", "yellow_composite", "cirsium_vulgare", "raununculus_spp", "senecio_jacobaea", "lathyrus_pratensis"]
+use_catselec = True
 
-# Figure out the mapping, this SHOULD create an error if it's not found
-category_mapping    = [ categories.index(sc) for sc in selected_categories ]
+if (use_catselec):
+    selected_categories = ["symphytum_officinale", "leucanthemum_vulgare", "lotus_spp", "knautia_arvensis", "trifolium_repens", "trifolium_pratense", "cirsium_arvense", "taraxacum_agg", "heracleum_sphondylium", "rubus_fruticosus_agg", "yellow_composite", "cirsium_vulgare", "raununculus_spp", "senecio_jacobaea", "lathyrus_pratensis"]
 
-# Completely replace the original categories
-categories = selected_categories
-# Tell the data loader
-dataset.__init_loader__(category_mapping);
+    # Figure out the mapping, this SHOULD create an error if it's not found
+    category_mapping    = [ categories.index(sc) for sc in selected_categories ]
 
-# Importance multiplies the loss for that category
-# category_importance = [1.0, 1.2953929539295392, 1.4722792607802877, 1.7880299251870324, 1.9031187790311879, 1.9616963064295483, 2.3741721854304636, 2.547069271758437, 2.6144029170464904, 2.760346487006737, 2.817288801571709, 2.817288801571709, 2.902834008097166, 3.0031413612565445, 3.1412924424972615, 3.414285714285714, 3.829105473965287, 3.880920162381597, 3.9233926128590966, 4.365296803652968, 4.709359605911331, 4.764119601328903, 5.112299465240642, 7.391752577319589, 14.412060301507537]
-category_importance = [1.0 for c in categories]
+    # Completely replace the original categories
+    categories = selected_categories
+    
+    # Tell the data loader
+    dataset.__init_loader__(category_mapping);
+
+    # Importance multiplies the loss for that category
+    category_importance = [1.0 for c in categories]
+
+else:
+    # Tell the data loader we're not
+    dataset.__init_loader__(None);
+
+    # Importance multiplies the loss for that category
+    category_importance = [1.0, 1.2953929539295392, 1.4722792607802877, 1.7880299251870324, 1.9031187790311879, 1.9616963064295483, 2.3741721854304636, 2.547069271758437, 2.6144029170464904, 2.760346487006737, 2.817288801571709, 2.817288801571709, 2.902834008097166, 3.0031413612565445, 3.1412924424972615, 3.414285714285714, 3.829105473965287, 3.880920162381597, 3.9233926128590966, 4.365296803652968, 4.709359605911331, 4.764119601328903, 5.112299465240642, 7.391752577319589, 14.412060301507537]
 
 category_count = len(categories);
 
+print(f"Using {category_count} categories {"with" if use_catselec else "without"} category selection")
 
 for arg, val in args._get_kwargs():
     task.set_parameter(f"args.{arg}", val);
@@ -332,8 +343,8 @@ def train(data, model, criterion, optimizer, epoch, args, scheduler):
 
         # Then compute the cross-entropy loss of the masks
         for ci in range(category_count):
-            # Why do we convert mask gts to long but not the floating point model output?!
-            ci_loss_ce = lamda * criterion[1](mask_preds[ci], mask_gts[ci].long());
+            # Apply lambda and also per-category importance
+            ci_loss_ce = lamda * criterion[1](mask_preds[ci], mask_gts[ci].long()) * category_importance[ci];
             loss += ci_loss_ce;
             total_loss_ce += ci_loss_ce;
 
