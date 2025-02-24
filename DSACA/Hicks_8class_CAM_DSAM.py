@@ -88,7 +88,7 @@ else:
 
 category_count = len(categories);
 
-print(f"Using {category_count} categories {"with" if use_catselec else "without"} category selection")
+print(f"Using {category_count} categories {'with' if use_catselec else 'without'} category selection")
 
 for arg, val in args._get_kwargs():
     task.set_parameter(f"args.{arg}", val);
